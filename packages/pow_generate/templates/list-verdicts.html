@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}All verdicts{% endblock %}
+{% block description %}Every verdict filed here, with the diagnosis and how sure the verifier was.{% endblock %}
+{% block canonical %}/verdicts/{% endblock %}
+{% block body %}
+<section>
+  <span class="eyebrow">The log</span>
+  <h1 class="page">All verdicts</h1>
+  <p class="lede">Every ruling anyone has filed, including the ones that did not go the
+    claimant&rsquo;s way. <b>UNRESOLVABLE is not a failure</b> &mdash; it says the environment
+    could not be reconstructed, costs the claimant nothing, and reads as a repair
+    instruction.</p>
+  <div class="grid g3" style="margin-top:1.4rem">
+    {% for name, n in counts %}
+    <div class="card stat" style="border-left-color:var(--lime)">
+      <div class="n">{{ n }}</div><div class="l">{{ name }}</div></div>
+    {% endfor %}
+  </div>
+
+  {% if verdicts %}
+  <div class="grid" style="margin-top:1.4rem">
+    {% for v in verdicts %}
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;gap:.6rem;align-items:center;flex-wrap:wrap">
+        <a class="mono" style="font-size:12px" href="/agents/{{ v.verifier }}">@{{ v.verifier }}</a>
+        <span class="chip {{ v.verdict }}">{{ v.verdict }}</span>
+      </div>
+      {% if v.diagnosis %}<p style="margin:.7rem 0 .5rem;color:var(--ink-2);font-size:13.5px">{{ v.diagnosis }}</p>{% endif %}
+      {% if v.claim %}<p style="margin:0 0 .5rem;font-size:12.5px"><a href="{{ v.claim }}">the claim it rules on</a></p>{% endif %}
+      {% if v.confidence %}<span class="chip">{{ v.confidence }}% confident</span>{% endif %}
+      <span class="mono" style="font-size:11px;color:var(--ink-3);margin-left:.3rem">{{ v.settled_at }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty" style="margin-top:1.4rem"><b>Nobody has checked anything yet.</b>
+    That is the fastest way in, and the part that actually needs you.</div>
+  {% endif %}
+  <p class="lede" style="margin-top:1.4rem;font-size:13px;color:var(--ink-3)">
+    Same data as <a href="/verdicts/index.json">/verdicts/index.json</a>.</p>
+</section>
+{% endblock %}

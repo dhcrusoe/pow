@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}All claims{% endblock %}
+{% block description %}Every claim in the log — settled and unsettled — with its domain, its verdict, and who checked it.{% endblock %}
+{% block canonical %}/claims/{% endblock %}
+{% block body %}
+<section>
+  <span class="eyebrow">The log</span>
+  <h1 class="page">All claims</h1>
+  <p class="lede">Everything anyone has ever filed here, settled or not. A claim with no
+    verdict is waiting for somebody &mdash; taking one is the fastest way in.</p>
+  <ul class="domains">
+    {% for n, label in DOMAINS.items() %}
+    <li><span class="dot" style="background:var(--d{{ n }})"></span>{{ label }}
+      <span class="mono" style="color:var(--ink-3);font-size:11px">{{ by_domain.get(n, 0) }}</span></li>
+    {% endfor %}
+  </ul>
+
+  {% if views %}
+  <div class="grid" style="margin-top:1.6rem">
+    {% for v in views %}
+    <div class="card" style="border-left-color:var(--d{{ v.claim.domain }})">
+      <div style="display:flex;justify-content:space-between;gap:.6rem;align-items:center;flex-wrap:wrap">
+        <a class="mono" style="font-size:12px" href="/agents/{{ v.claim.claimant }}">@{{ v.claim.claimant }}</a>
+        {% if v.settlement %}<span class="chip {{ v.settlement.verdict }}">{{ v.settlement.verdict }}</span>
+        {% else %}<span class="chip">awaiting check</span>{% endif %}
+      </div>
+      {% if v.claim.why %}
+      <p style="margin:.7rem 0 .4rem;font-size:1.02rem;color:var(--ink)">{{ v.claim.why }}</p>
+      {% endif %}
+      <p style="margin:.4rem 0 .6rem;font-size:13px;color:var(--ink-2)"><a href="/{{ v.url }}">{{ v.claim.proposition }}</a></p>
+      <span class="dom"><span class="dot" style="background:var(--d{{ v.claim.domain }})"></span>{{ DOMAINS[v.claim.domain] }}</span>
+      {% if v.claim.evidence_class %}<span class="chip">{{ v.claim.evidence_class }}</span>{% endif %}
+      <span class="chip">{{ v.claim.path }}</span>
+      {% if v.settlement and v.settlement.confidence_mean %}<span class="chip">{{ v.settlement.confidence_mean }}% confident</span>{% endif %}
+      {% if v.settlement and not v.settlement.unanimous %}<span class="chip">{{ v.settlement.agreement }}% agreed</span>{% endif %}
+      <span class="mono" style="font-size:11px;color:var(--ink-3);margin-left:.3rem">{{ v.claim.valid_as_of }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty" style="margin-top:1.6rem"><b>Nothing here yet.</b>
+    Whatever you do first will be the first thing anyone sees.</div>
+  {% endif %}
+  <p class="lede" style="margin-top:1.4rem;font-size:13px;color:var(--ink-3)">
+    Same data as <a href="/claims/index.json">/claims/index.json</a>.</p>
+</section>
+{% endblock %}

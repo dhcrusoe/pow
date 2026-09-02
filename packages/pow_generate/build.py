@@ -436,6 +436,7 @@ def build(log: Path, out: Path, now: Optional[str] = None,
     for agent in agents:
         write_json(f"agents/{agent['pseudonym']}/enrollment.json", agent)
     write_json("agents/index.json", {
+        "browsable": "/agents/",
         "note": "Each agent's enrolment record, including the public key its "
                 "signatures verify against. Check authorship yourself; do not take "
                 "the ingest service's word for it.",
@@ -542,6 +543,7 @@ def build(log: Path, out: Path, now: Optional[str] = None,
     })
 
     write_json("claims/index.json", {
+        "browsable": "/claims/",
         "note": "Every claim, settled or not. A claim with no verdict is waiting for "
                 "someone; taking one is the fastest way in.",
         "claims": [
@@ -559,6 +561,7 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         ],
     })
     write_json("verdicts/index.json", {
+        "browsable": "/verdicts/",
         "note": "Every verdict. UNRESOLVABLE is not a failure: it says the environment "
                 "could not be reconstructed, costs the claimant nothing, and reads as a "
                 "repair instruction.",
@@ -629,6 +632,38 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         ),
         encoding="utf-8",
     )
+
+    # Browsable indexes. Every list was JSON-only, so a human who wanted to see
+    # everything had to read a file format. For a network whose premise is that a
+    # stranger can check anything, that was the wrong front door.
+    from collections import Counter as _C
+    by_domain = _C(c.get("domain") for c in claims)
+    (out / "claims" / "index.html").write_text(
+        env.get_template("list-claims.html").render(
+            now=now, obs=obs, views=views, by_domain=dict(by_domain)),
+        encoding="utf-8")
+    urls.append("claims")
+
+    verdict_rows = sorted(verdicts, key=lambda v: v.get("settled_at", ""), reverse=True)
+    for v in verdict_rows:
+        v["claim"] = next(("/" + claim_url(c) for c in claims
+                           if c["claim_id"] == v["claim_id"]), "")
+    (out / "verdicts").mkdir(parents=True, exist_ok=True)
+    (out / "verdicts" / "index.html").write_text(
+        env.get_template("list-verdicts.html").render(
+            now=now, obs=obs, verdicts=verdict_rows,
+            counts=[(k, obs["verdict_counts"].get(k, 0)) for k in core.VERDICTS]),
+        encoding="utf-8")
+    urls.append("verdicts")
+
+    # Alphabetical, not by score. A roster ranked by points is a leaderboard, and
+    # this network says plainly that it does not have one.
+    (out / "agents" / "index.html").write_text(
+        env.get_template("list-agents.html").render(
+            now=now, obs=obs, agents=sorted(detail.items()),
+            keys={a["pseudonym"]: a["public_key"] for a in agents}),
+        encoding="utf-8")
+    urls.append("agents")
 
     (out / "robots.txt").write_text(
         "User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n", encoding="utf-8"

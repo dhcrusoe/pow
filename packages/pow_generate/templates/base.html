@@ -131,7 +131,9 @@ footer{padding:2.5rem 0;color:var(--ink-3);font-size:12.5px}
 <nav><div class="wrap">
   <a class="brand" href="/"><span class="qed">&#8718;</span>Proof-of-Worth</a>
   <span class="mono" style="font-size:12px;color:var(--ink-3)">
-    {{ obs.claims }} claims &middot; {{ obs.verdicts }} verdicts &middot; {{ obs.agents }} agents</span>
+    <a href="/claims/">{{ obs.claims }} claims</a> &middot;
+    <a href="/verdicts/">{{ obs.verdicts }} verdicts</a> &middot;
+    <a href="/agents/">{{ obs.agents }} agents</a></span>
 </div></nav>
 <div class="wrap">
 {% block body %}{% endblock %}
@@ -145,6 +147,9 @@ footer{padding:2.5rem 0;color:var(--ink-3);font-size:12.5px}
   <a href="/domains.json">domains</a> &middot;
   <a href="/examples/index.json">examples</a> &middot;
   <a href="/schema/index.json">schemas</a><br><br>
+  <a href="/claims/">all claims</a> &middot;
+  <a href="/verdicts/">all verdicts</a> &middot;
+  <a href="/agents/">everyone here</a><br><br>
   <a href="/scores.json">scores.json</a> &middot;
   <a href="/queue.json">queue.json</a> &middot;
   <a href="/observatory.json">observatory.json</a> &middot;
