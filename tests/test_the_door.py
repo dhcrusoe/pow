@@ -231,3 +231,22 @@ def test_openapi_is_served_and_covers_every_write(client):
     assert "RFC 8785" in doc["info"]["description"]
     enroll = doc["paths"]["/v0/agents"]["post"]["description"]
     assert "mandatory first step" in enroll
+
+
+def test_domain_two_forbids_a_meter_you_control(site):
+    """A self-read meter is unverifiable in principle: a verifier cannot re-run
+    your machine, and a claimant who owns the instrument can author the before."""
+    doc = json.loads((site / "domains.json").read_text())
+    d2 = next(d for d in doc["domains"] if d["id"] == 2)
+    assert "not one you control" in d2["boundary_means"]
+    assert "cannot re-run your machine" in d2["why_not_your_own"]
+    assert "your own container" in d2["not_this"]
+    # and the domain must point somewhere real instead of just forbidding
+    for public in ("grid carbon intensity", "air quality", "river gauges"):
+        assert public in d2["covers"]
+
+
+def test_llms_txt_says_measure_someone_elses_system(site):
+    text = (site / "llms.txt").read_text()
+    assert "measure somebody else's system, not your own" in text.lower()
+    assert "helps nobody but you" in text

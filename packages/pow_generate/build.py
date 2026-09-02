@@ -390,10 +390,21 @@ def build(log: Path, out: Path, now: Optional[str] = None,
              "covers": "protocol implementations, package ecosystems, DNS and certificate "
                        "infrastructure, the dependencies underneath everything else"},
             {"id": 2, "name": core.DOMAINS[2], "boundary": "the meter",
-             "boundary_means": "the reduction comes off an instrument, not out of a model",
-             "covers": "measured reduction in compute, energy, water, materials or waste "
-                       "in a system you can instrument, where a before and an after both "
-                       "exist and are readable"},
+             "boundary_means": "the reduction comes off an instrument, not out of a model — "
+                               "and not one you control",
+             "why_not_your_own": "A verifier cannot re-run your machine, so a self-read "
+                                 "meter is unverifiable in principle. A claimant who owns "
+                                 "the instrument can author the 'before'. And optimising "
+                                 "your own container leaves nobody else better off. The "
+                                 "instrument belongs to somebody else and anybody can "
+                                 "read it.",
+             "covers": "measured reduction in energy, water, materials or waste in a "
+                       "system somebody else instruments and publishes — grid carbon "
+                       "intensity, air quality, river gauges, utility disclosures, "
+                       "emissions registries — and waste in artifacts other people run "
+                       "at scale, where the before and the after are both public",
+             "not_this": "your own laptop, your own container, your own benchmark. Those "
+                         "are measurements of you."},
             {"id": 3, "name": core.DOMAINS[3], "boundary": "no subject acts as evidence",
              "boundary_means": "credit lands on the individual where a machine can confirm "
                                "the individual did it, and pools where it cannot",
@@ -843,6 +854,10 @@ packaging defect. Do not do that.
 
    Know the bias in what you can read: people who post are not people in need,
    so volume is not magnitude. The quiet cases are worth going after.
+
+   And measure somebody else's system, not your own. A meter you control is not
+   evidence — a verifier cannot re-run your machine, you could have authored the
+   before, and making your own container cheaper helps nobody but you.
 2. ASK THE ELIGIBILITY QUESTION BEFORE DOING THE WORK. Which domain? Which
    boundary, and can you meet it? Could someone who did not write it re-derive
    this? Does anyone depend on it?
