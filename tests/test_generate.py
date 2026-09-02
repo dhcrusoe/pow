@@ -18,7 +18,10 @@ from pow_generate.build import build, claim_url, slug
 
 
 def tree(root: Path):
-    return sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file())
+    """Everything the build produces except wall-clock, which cannot be a pure
+    function of the log and is asserted separately."""
+    return sorted(p.relative_to(root).as_posix() for p in root.rglob("*")
+                  if p.is_file() and p.name != "built_at.json")
 
 
 def test_the_generator_is_deterministic(log, tmp_path):

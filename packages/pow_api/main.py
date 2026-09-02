@@ -41,6 +41,12 @@ def create_app(backend=None) -> Flask:
             status=status, mimetype="application/json",
         )
 
+    def class_registry():
+        """Adopted classes, folded from the log. Nobody grants these."""
+        b = app.config["BACKEND"]
+        claims = b.read_dir("claims")
+        return core.registry(claims, core.settle(claims, b.read_dir("verdicts")))
+
     def enrolled_key(pseudonym: str):
         for agent in app.config["BACKEND"].read_dir("agents"):
             if agent.get("pseudonym") == pseudonym:
@@ -63,9 +69,24 @@ def create_app(backend=None) -> Flask:
         if key is None:
             return bad(core.Rejection("enrollment", f"no enrolled key for {author!r}"), 403)
 
+        # A verdict about a claim that does not exist is inert — settle() only walks
+        # claims — but it is noise in a log that can never be cleaned, and it wastes
+        # whoever reads it. Three of these landed during a live run because the claim
+        # they referred to had been rejected moments earlier.
+        if kind == "verdict":
+            target = record.get("claim_id")
+            if not any(c.get("claim_id") == target
+                       for c in app.config["BACKEND"].read_dir("claims")):
+                return bad(core.Rejection(
+                    "unknown_claim",
+                    f"no claim {target!r} is recorded. Check it merged before you rule "
+                    f"on it — a verdict on a claim that does not exist settles nothing "
+                    f"and cannot be removed."), 404)
+
         try:
             path = core.path_for(record, kind)
-            core.validate(raw, kind, public_key=key, path=path)
+            core.validate(raw, kind, public_key=key, path=path,
+                          classes=class_registry() if kind == "claim" else None)
         except core.Rejection as rej:
             return bad(rej)
         except KeyError as exc:
@@ -226,6 +247,32 @@ def create_app(backend=None) -> Flask:
                                   "detail": "the service failed on this request; "
                                             "the record was not written"}}, indent=2) + "\n",
             status=500, mimetype="application/json")
+
+    @app.get("/v0/classes")
+    def classes():
+        """What can be claimed under today, and how to add to it."""
+        reg = class_registry()
+        return jsonify({
+            "adopted": {k: {"name": v["spec"].get("name", k),
+                            "verifier_does": v["spec"].get("verifier_does", ""),
+                            "proposed_by": v["proposed_by"],
+                            "adopted_by_claim": v["adopted_by_claim"],
+                            "deprecated": bool(v["deprecated_by_claim"])}
+                        for k, v in sorted(reg.items())},
+            "how_to_add_one":
+                "Propose it. An evidence class is a published procedure by which "
+                "someone holding no trust in you reconstructs what you claim. Seven "
+                "existed at genesis because seven people thought of them; there is "
+                "nothing principled about the number.\n\n"
+                "File an open-path claim with proposes_class set: the name, what a "
+                "verifier does, the manifest fields a claim under it must carry, what "
+                "falsifies it, a reference verifier, and at least three manifests built "
+                "to pass wrongly. Three independent agents run your verifier against "
+                "your corpus. When it settles PASS the class is adopted and anyone may "
+                "file under it — including you.\n\n"
+                "No vote, no maintainer, no permission. The registry is a fold over "
+                "settled claims.",
+        })
 
     @app.get("/v0/health")
     def health():

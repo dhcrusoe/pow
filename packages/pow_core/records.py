@@ -33,7 +33,17 @@ VERDICTS = ("PASS", "FAIL", "INELIGIBLE", "UNRESOLVABLE")
 # exchange rate — and whoever sets that rate steers the network.
 PATHS = ("sealed", "open")
 DEFAULT_QUORUM = {"sealed": 1, "open": 3}
-EVIDENCE_CLASSES = ("E1", "E2", "E3", "E4", "E5", "E6", "E7")
+# The seven the network started with. They are not special: they live in the log
+# like everything else, and this tuple is only the fallback for a caller that has
+# no log to read. An agent that specifies an eighth is not asking permission — it
+# is adding to the registry the same way anyone added the first seven.
+GENESIS_CLASSES = ("E1", "E2", "E3", "E4", "E5", "E6", "E7")
+EVIDENCE_CLASSES = GENESIS_CLASSES  # kept: consumers may already import this
+
+# The vocabulary a class proposal uses to state what its manifest must carry.
+# Declarative on purpose: a new class states its requirements as data, so nobody
+# has to ship code for the network to enforce them.
+FIELD_TYPES = ("url", "digest", "date", "text", "object", "list", "key", "signature")
 DOMAINS = {
     1: "Securing the internet",
     2: "Energy, water and waste",
@@ -75,7 +85,12 @@ class Claim(Strict):
     claimant: str
     domain: Literal[1, 2, 3, 4, 5]
     path: Literal["sealed", "open"] = "sealed"
-    evidence_class: Optional[Literal["E1", "E2", "E3", "E4", "E5", "E6", "E7"]] = None
+    # Not a Literal. The set of classes lives in the log, so a class adopted after
+    # this code was written is as valid as one that shipped with it — which is the
+    # whole point of the standing invitation.
+    evidence_class: Optional[str] = None
+    proposes_class: Optional[ClassSpec] = None
+    deprecates_class: str = ""  # class_id this claim shows admits garbage
     proposition: str = Field(min_length=12, max_length=400)
     why: str = Field(default="", max_length=300)
 
@@ -139,6 +154,41 @@ class Verdict(Strict):
     ID_EXCLUDES: ClassVar[Tuple[str, ...]] = ("signature",)
 
 
+class ClassSpec(Strict):
+    """One evidence class, as data.
+
+    An evidence class is a published procedure by which someone holding no trust
+    in you reconstructs the fact you are claiming. Seven existed at genesis
+    because seven people thought of them. This record is how an eighth arrives.
+
+    `verifier_does` is the sentence that goes in the table: what a verifier
+    actually performs. `manifest_fields` is what a claim under this class must
+    carry, stated declaratively so the network can enforce it without anyone
+    shipping code. `falsifies` is the class's own boundary — the condition under
+    which a claim in this class fails however cleanly its evidence replays.
+    """
+    slug: str = Field(min_length=3, max_length=40)
+    name: str = Field(min_length=3, max_length=80)
+    verifier_does: str = Field(min_length=12, max_length=400)
+    unlocks: str = Field(default="", max_length=400)
+    manifest_fields: List[Dict[str, Any]] = Field(default_factory=list)
+    falsifies: str = Field(min_length=12, max_length=600)
+    reference_verifier: str = Field(default="", max_length=200_000)
+    negative_corpus: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class EvidenceClass(Strict):
+    """An adopted class, derived from a settled proposal. Nobody writes these by
+    hand: the generator folds them out of the log, and validation reads them."""
+    class_id: str
+    slug: str
+    spec: Dict[str, Any]
+    proposed_by: str
+    adopted_by_claim: str
+    adopted_at: str
+    deprecated_by_claim: str = ""
+
+
 class Research(Strict):
     """What an agent found out before it decided what to do.
 
@@ -175,7 +225,7 @@ class Seal(Strict):
     seal_id: str
     sealer: str
     commitment: str
-    intended_class: Literal["E1", "E2", "E3", "E4", "E5", "E6", "E7"]
+    intended_class: str
     sealed_at: str
     signature: str = ""
 
@@ -203,6 +253,8 @@ def json_schemas() -> Dict[str, dict]:
     return {
         "claim": Claim.model_json_schema(),
         "research": Research.model_json_schema(),
+        "class_spec": ClassSpec.model_json_schema(),
+        "evidence_class": EvidenceClass.model_json_schema(),
         "verdict": Verdict.model_json_schema(),
         "seal": Seal.model_json_schema(),
         "handout": Handout.model_json_schema(),
@@ -212,6 +264,7 @@ def json_schemas() -> Dict[str, dict]:
 
 __all__ = [
     "Claim", "Verdict", "Research", "Seal", "Handout", "Enrollment",
+    "ClassSpec", "EvidenceClass", "GENESIS_CLASSES", "FIELD_TYPES",
     "VERDICTS", "EVIDENCE_CLASSES", "DOMAINS", "BOUNDARIES", "PATHS",
     "DEFAULT_QUORUM", "json_schemas",
 ]

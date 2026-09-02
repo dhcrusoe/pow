@@ -50,8 +50,15 @@ def validate(
     *,
     public_key: Optional[str] = None,
     path: Optional[str] = None,
+    classes: Optional[Mapping] = None,
 ) -> dict:
-    """Validate one record. Returns the parsed dict, or raises Rejection."""
+    """Validate one record. Returns the parsed dict, or raises Rejection.
+
+    `classes` is the evidence-class registry, derived from the log. Pass it and a
+    class adopted last week is as valid as one that shipped with this code. Omit
+    it and only the genesis seven are known, which is the right default for a
+    caller with no log to read.
+    """
     if kind not in KINDS:
         raise Rejection(SCHEMA, f"unknown record kind: {kind}")
     model, id_field, directory = KINDS[kind]
@@ -74,7 +81,7 @@ def validate(
             raise Rejection(SCHEMA, f"{field} must be YYYY-MM-DD or RFC3339 UTC")
 
     if kind == "claim":
-        _claim_rules(record)
+        _claim_rules(record, classes)
     if kind == "research":
         _research_rules(record)
 
@@ -99,12 +106,15 @@ def validate(
     return record
 
 
-def _claim_rules(record: Mapping) -> None:
+def _claim_rules(record: Mapping, classes: Optional[Mapping] = None) -> None:
     prop = record.get("proposition", "")
     if prop.count(".") > 3 or "\n" in prop:
         raise Rejection(SCHEMA, "proposition must be one sentence")
     if not str(prop).strip():
         raise Rejection(SCHEMA, "a claim without a proposition is not schema-valid")
+
+    if record.get("proposes_class"):
+        _proposal_rules(record)
 
     if record.get("path", "sealed") == "open":
         return _open_rules(record)
@@ -118,12 +128,24 @@ def _claim_rules(record: Mapping) -> None:
     if ec is None:
         raise Rejection(SCHEMA, "a sealed claim names the evidence class whose procedure "
                                 "a verifier should run")
-    rules = MANIFEST_RULES.get(ec, ())
-    missing = [f for f, _, _ in rules if f not in manifest]
+    known = set(records.GENESIS_CLASSES) | set(classes or {})
+    if ec not in known:
+        raise Rejection(
+            SCHEMA,
+            f"no evidence class {ec!r} has been adopted. Adopted classes are "
+            f"{', '.join(sorted(known))} — see /classes/index.json. If the work you "
+            f"did needs a class that does not exist, propose one: that is a claim "
+            f"like any other, and it is the most valuable thing anyone can file here.")
+    # Built-in rules are 3-tuples and always required; declared ones carry their
+    # own optionality. Normalise so both read the same below.
+    rules = [(r + (True,))[:4] for r in rules_for(ec, classes)]
+    missing = [f for f, _, _, req in rules if req and f not in manifest]
     if missing:
-        wanted = "; ".join(f"{f}: {why}" for f, _, why in rules if f in missing)
+        wanted = "; ".join(f"{f}: {why}" for f, _, why, _ in rules if f in missing)
         raise Rejection(SCHEMA, f"{ec} manifest is missing {', '.join(missing)} — {wanted}")
-    for field, ok, why in rules:
+    for field, ok, why, req in rules:
+        if field not in manifest:
+            continue
         if not ok(manifest[field]):
             raise Rejection(
                 SCHEMA,
@@ -216,6 +238,71 @@ MANIFEST_RULES = {
 }
 
 REQUIRED_MANIFEST = {k: tuple(f for f, _, _ in v) for k, v in MANIFEST_RULES.items()}
+
+# The declarative vocabulary a proposed class uses to state its manifest. This is
+# what lets an eighth class arrive without anybody shipping code: the proposal
+# says "this field is a url, that one a digest", and the network enforces it.
+FIELD_CHECKS = {
+    "url": (_url, "an http(s) URL a stranger can fetch"),
+    "digest": (_digest, "sha256 as 64 hex, optionally prefixed sha256:"),
+    "date": (_date, "YYYY-MM-DD or RFC3339 UTC"),
+    "text": (_text, "at least eight characters of text"),
+    "object": (_obj, "a non-empty object"),
+    "list": (lambda v: isinstance(v, list) and bool(v), "a non-empty list"),
+    "key": (_key32, "a base64 ed25519 public key, 44 characters"),
+    "signature": (_sig, "a base64 signature"),
+}
+
+
+def rules_for(evidence_class, classes=None):
+    """Manifest rules for a class: built in, or declared by an adopted proposal."""
+    if evidence_class in MANIFEST_RULES:
+        return MANIFEST_RULES[evidence_class]
+    spec = (classes or {}).get(evidence_class)
+    if not spec:
+        return ()
+    out = []
+    for field in spec.get("spec", {}).get("manifest_fields", []):
+        kind = field.get("type", "text")
+        check, why = FIELD_CHECKS.get(kind, FIELD_CHECKS["text"])
+        out.append((field.get("name", ""), check, field.get("why") or why,
+                    bool(field.get("required", True))))
+    return tuple(out)
+
+
+def _proposal_rules(record: Mapping) -> None:
+    """A class proposal ships a reference verifier and a corpus built to fail.
+
+    A class that catches its own fraud recruits better than one that passes
+    cleanly — and the corpus is what a verifier actually runs, so a proposal
+    without one asks three strangers to take a specification on faith.
+    """
+    spec = record["proposes_class"]
+    if not isinstance(spec, dict):
+        raise Rejection(SCHEMA, "proposes_class must be an object")
+    if not str(spec.get("reference_verifier", "")).strip():
+        raise Rejection(SCHEMA, "a class proposal ships a reference verifier — the "
+                                "procedure itself, so a verifier can run it rather "
+                                "than read about it")
+    corpus = spec.get("negative_corpus")
+    if not isinstance(corpus, list) or len(corpus) < 3:
+        raise Rejection(SCHEMA, "a class proposal ships at least three manifests built "
+                                "to pass wrongly. A class that catches its own fraud "
+                                "recruits better than one that passes cleanly, and it "
+                                "is what the verifiers will actually run.")
+    fields = spec.get("manifest_fields")
+    if not isinstance(fields, list) or not fields:
+        raise Rejection(SCHEMA, "a class states what a claim under it must carry")
+    for f in fields:
+        if not isinstance(f, dict) or not f.get("name"):
+            raise Rejection(SCHEMA, "each manifest field needs a name")
+        if f.get("type", "text") not in records.FIELD_TYPES:
+            raise Rejection(SCHEMA, f"unknown field type {f.get('type')!r}; the "
+                                    f"vocabulary is {', '.join(records.FIELD_TYPES)}")
+    if record.get("path") != "open":
+        raise Rejection(SCHEMA, "a class proposal takes the open path: several "
+                                "independent agents run your verifier against your "
+                                "corpus and say how sure they got.")
 
 
 def _open_rules(record: Mapping) -> None:

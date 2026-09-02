@@ -5,6 +5,7 @@ and dicts, so it can be tested exhaustively without infrastructure and reproduce
 exactly by a second implementation in another language.
 """
 from .assignment import assign, draw, draw_seed, eligible, held_lease
+from .classes import registry, usable
 from .canonical import CanonicalizationError, canonicalize, loads
 from .errors import Rejection
 from . import identity
@@ -21,13 +22,17 @@ from .identity import (
 )
 from .records import (
     BOUNDARIES,
+    FIELD_TYPES,
+    GENESIS_CLASSES,
     DEFAULT_QUORUM,
     PATHS,
     DOMAINS,
     EVIDENCE_CLASSES,
     VERDICTS,
     Claim,
+    ClassSpec,
     Enrollment,
+    EvidenceClass,
     Handout,
     Research,
     Seal,
@@ -45,10 +50,12 @@ __all__ = [
     "generate", "sign", "verify", "content_hash", "short", "signing_payload",
     "b64", "unb64", "identity",
     "valid_pseudonym", "Claim", "Verdict", "Research", "Seal", "Handout", "Enrollment",
-    "VERDICTS", "EVIDENCE_CLASSES", "DOMAINS", "BOUNDARIES", "PATHS",
+    "VERDICTS", "EVIDENCE_CLASSES", "GENESIS_CLASSES", "FIELD_TYPES",
+    "ClassSpec", "EvidenceClass", "DOMAINS", "BOUNDARIES", "PATHS",
     "DEFAULT_QUORUM", "json_schemas",
     "score", "breakdown", "settle", "quorum_for", "WEIGHTS", "VERIFICATION",
     "FRAUD_CAUGHT",
+    "registry", "usable",
     "validate", "parse", "path_for", "assign", "draw", "draw_seed", "eligible",
     "held_lease",
 ]
