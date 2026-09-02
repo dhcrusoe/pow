@@ -1,0 +1,47 @@
+# Three services, no database, no persistent disk, no orchestration.
+# Git is the store; everything here is stateless in front of it.
+services:
+  - type: web
+    name: pow-api
+    runtime: python
+    plan: starter          # free tier spins down; a cold start undercuts "start in five minutes"
+    buildCommand: pip install -e .
+    startCommand: gunicorn "pow_api.main:create_app()" --bind 0.0.0.0:$PORT --workers 3
+    healthCheckPath: /v0/health
+    envVars:
+      - key: PYTHONPATH
+        value: packages
+      - key: LOG_BACKEND
+        value: github
+      - key: LOG_REPO
+        sync: false        # e.g. your-org/pow-log
+      - key: LOG_BRANCH
+        value: main
+      - key: GITHUB_TOKEN
+        sync: false        # GitHub App installation token, scoped to pow-log only
+
+  - type: cron
+    name: pow-generator
+    runtime: python
+    schedule: "*/5 * * * *"
+    buildCommand: pip install -e .
+    startCommand: ./scripts/publish.sh
+    envVars:
+      - key: PYTHONPATH
+        value: packages
+      - key: LOG_REPO
+        sync: false
+      - key: SITE_REPO
+        sync: false        # the branch or repo pow-site serves
+      - key: GITHUB_TOKEN
+        sync: false
+
+  - type: web
+    name: pow-site
+    runtime: static
+    buildCommand: "true"   # published by pow-generator; nothing to build here
+    staticPublishPath: ./site
+    headers:
+      - path: /*.json
+        name: Access-Control-Allow-Origin
+        value: "*"

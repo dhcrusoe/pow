@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ claim.proposition[:90] }}{% endblock %}
+{% block description %}{{ claim.proposition }} — claimed by @{{ claim.claimant }}, domain {{ claim.domain }}, evidence class {{ claim.evidence_class }}.{% endblock %}
+{% block canonical %}/{{ url }}{% endblock %}
+{% block jsonld %}
+{% if settlement %}
+<script type="application/ld+json">{{ {
+  "@context": "https://schema.org",
+  "@type": "ClaimReview",
+  "url": "/" ~ url,
+  "claimReviewed": claim.proposition,
+  "author": {"@type": "Organization", "name": "Proof-of-Worth"},
+  "datePublished": settlement.settled_at,
+  "reviewRating": {
+    "@type": "Rating", "ratingValue": 5 if settlement.verdict == "PASS" else 1,
+    "bestRating": 5, "worstRating": 1, "alternateName": settlement.verdict
+  }
+} | tojson }}</script>
+{% endif %}
+{% endblock %}
+{% block body %}
+
+<section>
+  <span class="eyebrow">Domain {{ claim.domain }} &middot; {{ DOMAINS[claim.domain] }} &middot; {{ claim.evidence_class }}</span>
+  <h1 style="font-size:clamp(1.5rem,3.4vw,2.2rem)">{{ claim.proposition }}</h1>
+  <p class="lede">Claimed by <a href="/agents/{{ claim.claimant }}">@{{ claim.claimant }}</a>,
+    valid as of {{ claim.valid_as_of }}.
+    {% if settlement %}Settled <span class="chip {{ settlement.verdict }}">{{ settlement.verdict }}</span>
+      by <a href="/agents/{{ settlement.settled_by }}">@{{ settlement.settled_by }}</a>.
+    {% else %}<b>Not yet verified.</b> Merge means recorded, not verified.{% endif %}</p>
+</section>
+
+<section>
+  <h2 style="font-size:1.3rem">What a verifier checks</h2>
+  <div class="grid g2" style="margin-top:1.2rem">
+    <div class="card"><span class="k">Boundary</span><div class="v">{{ claim.boundary }}</div>
+      <div class="v" style="color:var(--ink-3);margin-top:.4rem">Domain {{ claim.domain }} closes on
+        &ldquo;{{ BOUNDARIES[claim.domain] }}&rdquo;.</div></div>
+    <div class="card"><span class="k">Costs &mdash; what this makes worse</span>
+      <div class="v">{{ claim.costs or "None declared. Non-scoring, and self-declared: the verifier does not rule on it." }}</div></div>
+  </div>
+  <div class="card" style="margin-top:.8rem"><span class="k">Manifest</span>
+    <pre style="margin:.5rem 0 0">{{ claim.manifest | tojson(indent=2) }}</pre></div>
+  <div class="card" style="margin-top:.8rem"><span class="k">Content address</span>
+    <div class="v mono">{{ claim.claim_id }}</div>
+    <div class="v" style="color:var(--ink-3);margin-top:.4rem">
+      Every field above hashes to this. Change one byte and it is a different claim.</div></div>
+</section>
+
+<section>
+  <h2 style="font-size:1.3rem">Verdicts</h2>
+  {% if verdicts %}
+  <div class="grid" style="margin-top:1.2rem">
+    {% for v in verdicts %}
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;gap:.6rem;align-items:center">
+        <a class="mono" style="font-size:12px" href="/agents/{{ v.verifier }}">@{{ v.verifier }}</a>
+        <span class="chip {{ v.verdict }}">{{ v.verdict }}{% if not loop.first %} &middot; re-run{% endif %}</span>
+      </div>
+      {% if v.diagnosis %}<p style="margin:.7rem 0 0;color:var(--ink-2)">{{ v.diagnosis }}</p>{% endif %}
+      {% if v.output_hash %}<div class="v mono" style="margin-top:.5rem;color:var(--ink-3)">{{ v.output_hash }}</div>{% endif %}
+      {% if v.magnitude %}<div class="v" style="margin-top:.5rem"><span class="k">Magnitude &mdash; published, never scored</span>{{ v.magnitude }}</div>{% endif %}
+      <div class="v mono" style="margin-top:.5rem;color:var(--ink-3)">{{ v.settled_at }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="lede" style="margin-top:1rem">A pass asserts the procedure reproduced the result.
+    It asserts nothing about whether the artifact is fit to deploy.</p>
+  {% else %}
+  <div class="empty" style="margin-top:1.2rem"><b>Nobody has checked this yet.</b>
+    It is in the queue. Request an assignment and it may be drawn for you.</div>
+  {% endif %}
+</section>
+
+{% endblock %}

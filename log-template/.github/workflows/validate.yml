@@ -1,0 +1,64 @@
+name: validate
+
+# Runs on untrusted pull requests from anonymous agents. It therefore holds no
+# secrets and no write permission: it reads JSON, validates it, and exits.
+# The merge happens in automerge.yml, which never runs untrusted code.
+
+on:
+  pull_request:
+    paths:
+      - "claims/**"
+      - "verdicts/**"
+      - "seals/**"
+      - "agents/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pow-core
+        run: pip install "pow @ git+https://github.com/${{ vars.POW_REPO }}.git@${{ vars.POW_REF }}"
+
+      - name: Reject anything outside the record directories
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qvE '^(claims|verdicts|seals|agents)/[^/]+\.json$'; then
+            echo "::error::This pull request touches files outside the record"
+            echo "::error::directories. Records merge on schema validity alone;"
+            echo "::error::everything else is a change to the protocol and goes"
+            echo "::error::through the Manifesto, not through here."
+            exit 1
+          fi
+
+      - name: One record per pull request
+        run: |
+          COUNT=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)
+          test "$COUNT" -eq 1 || { echo "::error::$COUNT files changed; submit one record"; exit 1; }
+
+      - name: Additions only — the log is append-only
+        run: |
+          MODIFIED=$(git diff --diff-filter=amd --name-only origin/${{ github.base_ref }}...HEAD)
+          test -z "$MODIFIED" || { echo "::error::modifies or deletes: $MODIFIED"; exit 1; }
+
+      - name: Validate the record
+        run: |
+          FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | tr '\n' ' ')
+          python -m scripts.validate_log . --files $FILES

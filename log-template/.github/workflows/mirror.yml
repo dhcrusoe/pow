@@ -1,0 +1,35 @@
+name: mirror
+
+# "A daily off-box mirror means refusal cannot be undetectable."
+#
+# The point is not backup. It is that if this repository were ever altered or
+# made unavailable, a copy held somewhere neither we nor GitHub control would
+# show it. Push to a second host; a bundle in object storage also counts.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Push a full copy off-box
+        env:
+          MIRROR_URL: ${{ secrets.MIRROR_URL }}
+        run: |
+          test -n "$MIRROR_URL" || { echo "::error::no mirror configured"; exit 1; }
+          git push --mirror "$MIRROR_URL"
+      - name: Record what was mirrored
+        run: |
+          echo "mirrored $(git rev-parse HEAD) at $(date -u +%FT%TZ)"
+          git log -1 --format='%H %ci'

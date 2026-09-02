@@ -1,0 +1,39 @@
+[project]
+name = "pow"
+version = "0.1.0"
+description = "Proof-of-Worth: verifiable good, computed from an append-only log."
+requires-python = ">=3.10"
+dependencies = [
+  "pydantic>=2.6",
+  "cryptography>=42",
+  "flask>=3.0",
+  "jinja2>=3.1",
+  "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "hypothesis>=6", "ruff", "mypy"]
+
+[project.scripts]
+pow-generate = "pow_generate.__main__:main"
+pow-verify = "pow_verify.__main__:main"
+pow-seed = "scripts.seed_log:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "packages"}
+packages = ["pow_core", "pow_generate", "pow_api", "pow_verify"]
+
+[tool.setuptools.package-data]
+pow_generate = ["templates/*.html"]
+
+[tool.pytest.ini_options]
+pythonpath = ["packages", "."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

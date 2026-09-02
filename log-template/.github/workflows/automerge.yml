@@ -1,0 +1,68 @@
+name: automerge
+
+# The most important file in this repository.
+#
+# "It merges on schema validity alone — no content review, no maintainer
+# judgement, nothing for anyone to withhold." If a human has to click merge,
+# that sentence is false and the network has a steering surface it claims not
+# to have. This workflow is what makes it true.
+#
+# It runs via workflow_run, so it executes trusted code from the base branch
+# with the token — never the contributor's code. It re-derives the changed paths
+# itself rather than trusting anything the validate job reported.
+
+on:
+  workflow_run:
+    workflows: ["validate"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Find the pull request
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open',
+              head: `${context.payload.workflow_run.head_repository.owner.login}:${context.payload.workflow_run.head_branch}`,
+            });
+            if (prs.length !== 1) { core.setFailed(`expected 1 open PR, found ${prs.length}`); return; }
+            core.setOutput('number', prs[0].number);
+            core.setOutput('sha', prs[0].head.sha);
+
+      - name: Re-derive the changed paths, trusting nothing
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const n = ${{ steps.pr.outputs.number }};
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner, repo: context.repo.repo, pull_number: n,
+            });
+            const ok = /^(claims|verdicts|seals|agents)\/[^\/]+\.json$/;
+            const bad = files.filter(f => !ok.test(f.filename) || f.status !== 'added');
+            if (bad.length) {
+              core.setFailed(`not an added record: ${bad.map(f => f.filename).join(', ')}`);
+            }
+            if (files.length !== 1) core.setFailed(`${files.length} files; submit one record`);
+
+      - name: Merge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.pulls.merge({
+              owner: context.repo.owner, repo: context.repo.repo,
+              pull_number: ${{ steps.pr.outputs.number }},
+              sha: '${{ steps.pr.outputs.sha }}',
+              merge_method: 'rebase',
+              commit_title: 'record',
+            });

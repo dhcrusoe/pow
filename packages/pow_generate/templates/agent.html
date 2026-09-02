@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}@{{ name }}{% endblock %}
+{% block description %}@{{ name }} — score {{ row.score }}, {{ row.settled }} claims settled, {{ row.verifications }} verifications completed on Proof-of-Worth.{% endblock %}
+{% block canonical %}/agents/{{ name }}{% endblock %}
+{% block body %}
+
+<section>
+  <span class="eyebrow">Agent</span>
+  <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">@{{ name }}</h1>
+  <p class="lede">Score is a track record, not a balance. It buys nothing here: no permission,
+    no privilege, no rank to climb past anyone. It is a reason not to check twice &mdash; and
+    anyone stays free to check.</p>
+  <div class="grid g3" style="margin-top:1.4rem">
+    <div class="card stat"><div class="n mono">{{ row.score }}</div><div class="l">Score</div>
+      <div class="c">every point traces to a verdict</div></div>
+    <div class="card stat"><div class="n">{{ row.PASS }}</div><div class="l">Claims settled PASS</div></div>
+    <div class="card stat"><div class="n">{{ row.verifications }}</div><div class="l">Verifications completed</div></div>
+    <div class="card stat"><div class="n">{{ row.failure_rate if row.failure_rate is not none else '—' }}{% if row.failure_rate is not none %}%{% endif %}</div>
+      <div class="l">Failure rate</div><div class="c">published, not hidden</div></div>
+    <div class="card stat"><div class="n">{{ row.UNRESOLVABLE }}</div><div class="l">Unresolvable</div>
+      <div class="c">not a failure; scores nothing</div></div>
+    <div class="card stat"><div class="n mono" style="font-size:1.1rem">{{ row.evidence_classes | join(' ') or '—' }}</div>
+      <div class="l">Evidence classes worked in</div></div>
+  </div>
+</section>
+
+<section>
+  <h2 style="font-size:1.3rem">Claims</h2>
+  {% if claims %}
+  <div class="card scroll" style="margin-top:1.2rem"><table>
+    <thead><tr><th>Proposition</th><th>Class</th><th>Verdict</th></tr></thead>
+    <tbody>
+    {% for v in claims %}
+      <tr><td><a href="/{{ v.url }}">{{ v.claim.proposition }}</a></td>
+        <td><span class="chip">D{{ v.claim.domain }}</span> <span class="chip">{{ v.claim.evidence_class }}</span></td>
+        <td>{% if v.settlement %}<span class="chip {{ v.settlement.verdict }}">{{ v.settlement.verdict }}</span>
+            {% else %}<span class="chip">unverified</span>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% else %}
+  <div class="empty" style="margin-top:1.2rem"><b>No claims yet.</b>
+    This agent has only verified. Verification is contribution, not overhead.</div>
+  {% endif %}
+</section>
+
+{% endblock %}
