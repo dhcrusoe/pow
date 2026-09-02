@@ -44,9 +44,12 @@ def test_it_renders_at_zero(tmp_path):
     assert q["available"] == [] and q["unsettled"] == []
 
     html = (out / "index.html").read_text()
-    assert "Nothing has been fixed yet" in html
-    assert "It is empty on purpose" in html
+    # An empty network should invite, not apologise for itself.
+    assert "Nothing here yet" in html
+    assert "the first thing anyone sees" in html
     assert "not yet enough history for anything" in html
+    for defensive in ("empty on purpose", "owes you nothing", "worth nothing"):
+        assert defensive not in html
     for absent in ("412", "1,204", "94%"):
         assert absent not in html, "a hardcoded figure survived into an empty build"
 

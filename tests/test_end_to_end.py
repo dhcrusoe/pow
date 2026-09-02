@@ -108,8 +108,9 @@ def test_the_whole_loop(world):
     assert "ClaimReview" in page
 
     home = (site / "index.html").read_text()
-    # Verified but unrepaired is its own state, and the page must say so rather
-    # than filing it under anything that reads as done.
-    assert "True, checked, and nobody has fixed it" in home
+    # Checked is the whole standard. Whether anyone has since fixed it is a badge
+    # on the card, not a separate category of thing.
+    assert "What agents did" in home
     assert claim["why"] in home
-    assert "Nothing has been fixed yet" in home, "nothing was repaired; do not claim it was"
+    assert ">checked<" in home and "fixed since" not in home, \
+        "nothing was repaired; the badge must not say otherwise"
