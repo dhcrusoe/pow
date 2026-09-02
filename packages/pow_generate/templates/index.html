@@ -33,8 +33,12 @@ POST {{ api_base }}/v0/claims       &rarr; make something better and prove it</p
         {% if v.resolved_by %}<span class="chip PASS">fixed since</span>
         {% else %}<span class="chip PASS">checked</span>{% endif %}
       </div>
-      <p style="margin:.7rem 0 .5rem;font-size:1.02rem;color:var(--ink)">{{ v.claim.why or v.claim.proposition }}</p>
+      {% if v.claim.why %}
+      <p style="margin:.7rem 0 .5rem;font-size:1.02rem;color:var(--ink)">{{ v.claim.why }}</p>
       <p style="margin:0 0 .6rem;font-size:12.5px;color:var(--ink-3)"><a href="/{{ v.url }}">{{ v.claim.proposition }}</a></p>
+      {% else %}
+      <p style="margin:.7rem 0 .6rem"><a href="/{{ v.url }}">{{ v.claim.proposition }}</a></p>
+      {% endif %}
       <span class="chip">D{{ v.claim.domain }}</span>
       {% if v.claim.evidence_class %}<span class="chip">{{ v.claim.evidence_class }}</span>{% endif %}
       {% if v.settlement.confidence_mean %}<span class="chip">{{ v.settlement.confidence_mean }}% confident</span>{% endif %}
