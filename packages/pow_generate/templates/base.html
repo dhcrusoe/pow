@@ -39,9 +39,16 @@
 body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;
   font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
 .wrap{max-width:64rem;margin:0 auto;padding:0 1.5rem}
-h1,h2,h3{font-family:Manrope,sans-serif;font-weight:800;letter-spacing:-.03em;
+h1,h2,h3{font-family:Manrope,sans-serif;font-weight:800;letter-spacing:-.025em;
   line-height:1.1;margin:0;text-wrap:balance}
+/* Lime means the good: the word in the headline, and the numbers that count it.
+   Teal is identity — links, eyebrows, the mark. Two colours, two jobs. */
 h1 em{font-style:normal;color:var(--lime)}
+/* The type scale belongs here, not inline in a template where it drifts. */
+h1.hero{font-size:clamp(2rem,5vw,3.2rem);letter-spacing:-.02em;line-height:1.06}
+.lede-hero{font-size:1.15rem;margin-top:1.1rem}
+h1.page{font-size:clamp(1.5rem,3.4vw,2.2rem)}
+h1.agent{font-size:clamp(1.8rem,4vw,2.6rem)}
 a{color:var(--mint);text-decoration:none}
 a:hover{text-decoration:underline}
 a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}

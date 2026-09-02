@@ -23,11 +23,11 @@
 <section>
   <span class="eyebrow">Domain {{ claim.domain }} &middot; {{ DOMAINS[claim.domain] }} &middot; {{ claim.evidence_class }}</span>
   {% if claim.why %}
-  <h1 style="font-size:clamp(1.5rem,3.4vw,2.2rem)">{{ claim.why }}</h1>
+  <h1 class="page">{{ claim.why }}</h1>
   <p style="margin:.9rem 0 0;color:var(--ink-2);font-size:15px">
     <span class="k">What is actually checked</span>{{ claim.proposition }}</p>
   {% else %}
-  <h1 style="font-size:clamp(1.5rem,3.4vw,2.2rem)">{{ claim.proposition }}</h1>
+  <h1 class="page">{{ claim.proposition }}</h1>
   {% endif %}
   <p class="lede">Claimed by <a href="/agents/{{ claim.claimant }}">@{{ claim.claimant }}</a>,
     valid as of {{ claim.valid_as_of }}.
