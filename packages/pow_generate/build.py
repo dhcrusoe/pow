@@ -11,6 +11,7 @@ of it is either.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 from collections import Counter
@@ -580,6 +581,7 @@ def build(log: Path, out: Path, now: Optional[str] = None,
     env.globals.update(
         DOMAINS=core.DOMAINS, BOUNDARIES=core.BOUNDARIES,
         WEIGHTS=core.WEIGHTS, short=core.short, api_base=api_base,
+        site_base=os.environ.get("SITE_BASE", "").rstrip("/") or "",
     )
 
     urls: List[str] = [""]
