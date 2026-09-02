@@ -18,27 +18,42 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-:root{--bg:#07090A;--panel:rgba(255,255,255,.04);--stroke:rgba(255,255,255,.10);
-  --ink:#F4F8F7;--ink-2:#A7B6BB;--ink-3:#6C7C83;--mint:#2DD4BF;--amber:#FFD60A;
-  --red:#FF453A;--r:12px}
+:root{
+  /* Ground: a deep forest floor rather than blue-black slate. Same darkness,
+     warmer and greener, so the palette above it reads as growing things. */
+  --bg:#0A0F0C; --panel:rgba(171,255,79,.045); --stroke:rgba(171,255,79,.13);
+  --stroke-2:rgba(171,255,79,.22);
+  --ink:#F2F7F3; --ink-2:#B4C4B8; --ink-3:#7C8F82;
+
+  /* Brand accent and semantic colour are now separate. Mint used to be both,
+     so every PASS chip was also shouting the brand. */
+  --accent:#08BDBD;          /* teal — links, eyebrows, the mark */
+  --accent-soft:rgba(8,189,189,.14);
+  --lime:#ABFF4F;            /* emphasis. Brighter than body text: one per screen */
+  --green:#29BF12;           /* PASS */
+  --amber:#FF9914;           /* UNRESOLVABLE — not a failure, so warm not red */
+  --red:#F21B3F;             /* FAIL */
+  --mint:#08BDBD;            /* kept: older rules still reference it */
+  --r:12px}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;
   font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
 .wrap{max-width:64rem;margin:0 auto;padding:0 1.5rem}
 h1,h2,h3{font-family:Manrope,sans-serif;font-weight:800;letter-spacing:-.03em;
   line-height:1.1;margin:0;text-wrap:balance}
+h1 em{font-style:normal;color:var(--lime)}
 a{color:var(--mint);text-decoration:none}
 a:hover{text-decoration:underline}
-a:focus-visible{outline:2px solid var(--mint);outline-offset:3px;border-radius:4px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
 .mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
 nav{border-bottom:1px solid var(--stroke)}
 nav .wrap{display:flex;justify-content:space-between;align-items:center;
   padding-top:1.1rem;padding-bottom:1.1rem;gap:1rem;flex-wrap:wrap}
 .brand{font-family:Manrope,sans-serif;font-weight:800;font-size:15px;color:var(--ink)}
-.brand .qed{color:var(--mint);margin-right:.35rem}
+.brand .qed{color:var(--lime);margin-right:.35rem}
 section{padding:3rem 0;border-bottom:1px solid var(--stroke)}
 .eyebrow{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--mint);display:block;margin-bottom:.8rem}
+  text-transform:uppercase;color:var(--accent);display:block;margin-bottom:.8rem}
 .lede{color:var(--ink-2);max-width:44rem;margin:.9rem 0 0}
 .card{background:var(--panel);border:1px solid var(--stroke);border-radius:var(--r);padding:1.2rem}
 .grid{display:grid;gap:.8rem}
@@ -47,11 +62,12 @@ section{padding:3rem 0;border-bottom:1px solid var(--stroke)}
 .chip{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:10px;
   letter-spacing:.1em;text-transform:uppercase;padding:.18rem .45rem;border-radius:4px;
   border:1px solid var(--stroke);color:var(--ink-3)}
-.chip.PASS{color:var(--mint);border-color:var(--mint)}
+.chip.PASS{color:var(--green);border-color:var(--green)}
 .chip.FAIL{color:var(--red);border-color:var(--red)}
 .chip.INELIGIBLE{color:var(--red);border-color:var(--stroke)}
 .chip.UNRESOLVABLE{color:var(--amber);border-color:var(--amber)}
-.stat .n{font-family:Manrope,sans-serif;font-weight:800;font-size:1.9rem;line-height:1}
+.stat .n{font-family:Manrope,sans-serif;font-weight:800;font-size:1.9rem;line-height:1;
+  color:var(--lime)}
 .stat .l{font-size:12.5px;color:var(--ink-2);margin-top:.4rem}
 .stat .c{font-size:11.5px;color:var(--ink-3);margin-top:.25rem}
 pre{background:rgba(0,0,0,.45);border:1px solid var(--stroke);border-radius:var(--r);
