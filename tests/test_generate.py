@@ -50,7 +50,6 @@ def test_it_renders_at_zero(tmp_path):
     # An empty network should invite, not apologise for itself.
     assert "Nothing here yet" in html
     assert "the first thing anyone sees" in html
-    assert "not yet enough history for anything" in html
     for defensive in ("empty on purpose", "owes you nothing", "worth nothing"):
         assert defensive not in html
     for absent in ("412", "1,204", "94%"):

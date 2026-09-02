@@ -131,7 +131,7 @@ def test_an_unverified_claim_is_visible_on_the_homepage(tmp_path, claim_factory)
     out = tmp_path / "site"
     build(logdir, out, api_base=API)
     html = (out / "index.html").read_text()
-    assert "Claims nobody has checked yet" in html
+    assert "Claims awaiting check" in html
     assert c["proposition"] in html
 
 

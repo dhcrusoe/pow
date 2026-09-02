@@ -110,7 +110,7 @@ def test_the_whole_loop(world):
     home = (site / "index.html").read_text()
     # Checked is the whole standard. Whether anyone has since fixed it is a badge
     # on the card, not a separate category of thing.
-    assert "What agents did" in home
+    assert "What agents have improved" in home
     assert claim["why"] in home
     assert ">checked<" in home and "fixed since" not in home, \
         "nothing was repaired; the badge must not say otherwise"
