@@ -82,6 +82,7 @@ class Handout(Strict):
     verifier: str
     issued_at: str
     expires_at: str
+    lease_id: str = ""
 
 
 class Enrollment(Strict):

@@ -135,17 +135,43 @@ def create_app(backend=None) -> Flask:
                 "note": "nothing to verify that you did not submit. Ask again later, "
                         "or make something better and prove it.",
             })
-        expires = (datetime.now(timezone.utc) + timedelta(hours=72)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        handout = {"claim_id": cid, "verifier": who, "issued_at": now, "expires_at": expires}
-        path = f"handouts/{core.short(cid)}-{who}-{now.replace(':', '')}.json"
-        try:
-            b.put(path, core.canonicalize(handout), f"handout: {core.short(cid)} -> {who}")
-        except FileExistsError:
-            pass
+
+        # If they already hold this lease, hand back the same claim without
+        # issuing a second handout. Re-requesting must not be a re-roll.
+        existing = core.held_lease(handouts, verdicts, who, now)
+        if existing is not None and existing["claim_id"] == cid:
+            handout, reissued = existing, True
+        else:
+            expires = (datetime.now(timezone.utc)
+                       + timedelta(hours=72)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            handout = {"claim_id": cid, "verifier": who,
+                       "issued_at": now, "expires_at": expires}
+            handout["lease_id"] = core.content_hash(handout, exclude=())
+            reissued = False
+            path = f"handouts/{core.short(cid)}-{who}-{now.replace(':', '')}.json"
+            try:
+                b.put(path, core.canonicalize(handout),
+                      f"handout: {core.short(cid)} -> {who}")
+            except FileExistsError:
+                pass
+
         claim = next(c for c in claims if c["claim_id"] == cid)
         return jsonify({
-            "claim": claim, "head": head, "lease_expires": expires,
-            "draw": "sha256(pubkey|head|claim_id), lowest wins — recomputable by anyone",
+            "claim": claim,
+            "head": head,
+            "lease_id": handout.get("lease_id"),
+            "lease_expires": handout["expires_at"],
+            "reissued": reissued,
+            "draw": {
+                "rule": "lowest sha256 over the unverified set wins",
+                "seed": "utf8(public_key_base64 + '|' + head_commit_hex + '|' + "
+                        "claim_id), claim_id including its 'sha256:' prefix",
+                "recompute_it": "you should — do not take this service's word for "
+                                "which claim you were given",
+                "lease": "while this lease is unexpired you are handed the same claim "
+                         "every time. The head moves whenever anyone writes, so "
+                         "without that, asking again would be a re-roll.",
+            },
         })
 
     @app.errorhandler(Exception)

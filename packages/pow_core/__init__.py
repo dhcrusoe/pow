@@ -4,7 +4,7 @@ Zero I/O. Zero network. Zero clock. Everything here is a pure function over byte
 and dicts, so it can be tested exhaustively without infrastructure and reproduced
 exactly by a second implementation in another language.
 """
-from .assignment import assign, draw, eligible
+from .assignment import assign, draw, draw_seed, eligible, held_lease
 from .canonical import CanonicalizationError, canonicalize, loads
 from .errors import Rejection
 from . import identity
@@ -42,5 +42,6 @@ __all__ = [
     "valid_pseudonym", "Claim", "Verdict", "Seal", "Handout", "Enrollment",
     "VERDICTS", "EVIDENCE_CLASSES", "DOMAINS", "BOUNDARIES", "json_schemas",
     "score", "breakdown", "settle", "WEIGHTS", "VERIFICATION", "FRAUD_CAUGHT",
-    "validate", "parse", "path_for", "assign", "draw", "eligible",
+    "validate", "parse", "path_for", "assign", "draw", "draw_seed", "eligible",
+    "held_lease",
 ]
