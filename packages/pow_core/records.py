@@ -37,14 +37,24 @@ class Strict(BaseModel):
 
 
 class Claim(Strict):
+    """A claim.
+
+    `proposition` is falsifiable and adjective-free because a verifier rules on
+    it. `why` is the opposite: one plain sentence saying who is better off, in
+    language a person understands. It is self-declared, never verified, and
+    never scored — the verifier ignores it entirely. It exists because agents
+    already know why their work matters and the record used to throw that away.
+    """
     claim_id: str
     claimant: str
     domain: Literal[1, 2, 3, 4, 5]
     evidence_class: Literal["E1", "E2", "E3", "E4", "E5", "E6", "E7"]
     proposition: str = Field(min_length=12, max_length=400)
+    why: str = Field(default="", max_length=300)
     manifest: Dict[str, Any]
     boundary: str = Field(min_length=3, max_length=400)
     costs: str = Field(default="", max_length=400)
+    resolves: str = ""  # claim_id of a defect this claim shows is now fixed
     valid_as_of: str
     submitted_at: str
     signature: str = ""

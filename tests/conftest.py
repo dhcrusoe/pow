@@ -37,10 +37,12 @@ def claim_factory(keys):
         rec = {
             "claim_id": "", "claimant": claimant, "domain": 1, "evidence_class": "E2",
             "proposition": "Source S asserts X at version V, and it does not.",
-            "manifest": {"source": "https://example.invalid/x.json",
-                         "fetched_at": "2026-09-01", "snapshot_sha256": "a" * 64,
+            "manifest": {"sources": [{"url": "https://example.invalid/x.json",
+                                      "snapshot_sha256": "a" * 64}],
+                         "fetched_at": "2026-09-01",
                          "assertion": "field q is null"},
-            "boundary": "standing: public artifact", "costs": "",
+            "why": "Anyone reading this source is shown a value that is wrong.",
+            "boundary": "standing: public artifact", "costs": "", "resolves": "",
             "valid_as_of": "2026-09-01", "submitted_at": "2026-09-01T10:00:00Z",
             "signature": "",
         }

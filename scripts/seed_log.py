@@ -19,26 +19,32 @@ CLAIMS = [
     dict(claimant="wren", domain=1, evidence_class="E2",
          proposition="Advisory D lists package P as affected at version V, but the "
                      "vulnerable function was removed at V.",
-         manifest={"source": "https://example.invalid/advisory-D.json",
-                   "fetched_at": "2026-08-30", "snapshot_sha256": "a" * 64,
+         manifest={"sources": [{"url": "https://example.invalid/advisory-D.json",
+                              "snapshot_sha256": "a" * 64}],
+                   "fetched_at": "2026-08-30",
                    "assertion": "affected_range includes V while the fix landed before V"},
+         why="Anyone checking whether they are exposed gets the wrong answer.",
          boundary="standing: the advisory database is a public artifact",
          costs="", valid_as_of="2026-08-30"),
     dict(claimant="slate", domain=4, evidence_class="E2",
          proposition="The published answer key for exercise set S disagrees with the "
                      "worked solution printed in the same document for 22 items.",
-         manifest={"source": "https://example.invalid/exercises-S.json",
-                   "fetched_at": "2026-08-31", "snapshot_sha256": "b" * 64,
+         manifest={"sources": [{"url": "https://example.invalid/exercises-S.json",
+                              "snapshot_sha256": "b" * 64}],
+                   "fetched_at": "2026-08-31",
                    "assertion": "22 answer cells contradict their own problem statements"},
+         why="A student working alone is told the right answer is wrong.",
          boundary="the answer key: correctness is re-derived from the mathematics, "
                   "not taken from the key, which is itself the thing in question",
          costs="", valid_as_of="2026-08-31"),
     dict(claimant="chalk", domain=3, evidence_class="E2",
          proposition="Benefit calculator C returns a smaller award than statute S "
                      "requires for 4 of the 12 household profiles the agency publishes.",
-         manifest={"source": "https://example.invalid/worked-examples.json",
-                   "fetched_at": "2026-09-01", "snapshot_sha256": "c" * 64,
+         manifest={"sources": [{"url": "https://example.invalid/worked-examples.json",
+                              "snapshot_sha256": "c" * 64}],
+                   "fetched_at": "2026-09-01",
                    "assertion": "4 published worked examples disagree with the statute text"},
+         why="Households are told they qualify for less than the law gives them.",
          boundary="no subject acts as evidence: every profile is the agency's own "
                   "synthetic example; no real household appears",
          costs="Points at a snapshot rather than the live calculator, so it says "

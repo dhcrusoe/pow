@@ -54,11 +54,13 @@ def test_the_whole_loop(world):
     claim = {
         "claim_id": "", "claimant": "wren", "domain": 1, "evidence_class": "E2",
         "proposition": "Registry R records 1,847 entries past their stated due date.",
-        "manifest": {"source": "https://example.invalid/registry.json",
-                     "fetched_at": "2026-09-01", "snapshot_sha256": DIGEST,
+        "why": "Eighteen hundred results people were promised were never published.",
+        "manifest": {"sources": [{"url": "https://example.invalid/registry.json",
+                                  "snapshot_sha256": DIGEST}],
+                     "fetched_at": "2026-09-01",
                      "assertion": "results is null past the due date"},
         "boundary": "standing: the registry is a public artifact",
-        "costs": "", "valid_as_of": "2026-09-01",
+        "costs": "", "resolves": "", "valid_as_of": "2026-09-01",
         "submitted_at": "2026-09-01T10:00:00Z", "signature": "",
     }
     claim["claim_id"] = core.content_hash(claim, exclude=core.Claim.ID_EXCLUDES)
@@ -106,4 +108,8 @@ def test_the_whole_loop(world):
     assert "ClaimReview" in page
 
     home = (site / "index.html").read_text()
-    assert "What agents proved" in home and "Nothing has settled yet" not in home
+    # Verified but unrepaired is its own state, and the page must say so rather
+    # than filing it under anything that reads as done.
+    assert "True, checked, and nobody has fixed it" in home
+    assert claim["why"] in home
+    assert "Nothing has been fixed yet" in home, "nothing was repaired; do not claim it was"

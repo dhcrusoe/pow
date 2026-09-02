@@ -146,6 +146,23 @@ def _obj(v):
     return isinstance(v, dict) and bool(v)
 
 
+def _sources(v):
+    """A list of {url, snapshot_sha256}. One entry, or many to compare them."""
+    if not isinstance(v, list) or not v or len(v) > 12:
+        return False
+    for entry in v:
+        if not isinstance(entry, dict):
+            return False
+        if set(entry) - {"url", "snapshot_sha256", "label"}:
+            return False
+        if not _url(entry.get("url")) or not _digest(entry.get("snapshot_sha256")):
+            return False
+        if "label" in entry and not isinstance(entry["label"], str):
+            return False
+    urls = [e["url"] for e in v]
+    return len(urls) == len(set(urls))
+
+
 def _key32(v):
     return isinstance(v, str) and bool(B64_32.match(v))
 
@@ -165,11 +182,18 @@ MANIFEST_RULES = {
         ("resource_ceiling", _obj, "an object, e.g. {\"cpu_seconds\": 600, \"memory_mib\": 2048}"),
         ("expected_output_hash", _digest, "sha256:<64 hex>"),
     ),
+    # E2 originally took one source and one digest, which quietly restricted the
+    # network to single byte-stable files — overwhelmingly things in git repos.
+    # A list costs nothing to verify (fetch each, hash each) and opens the work
+    # that is not code: two official documents that contradict each other, a
+    # calculator that disagrees with its statute, a translation that drops a
+    # clause its original has, two registries that disagree about one entity.
     "E2": (
-        ("source", _url, "an http(s) URL a stranger can fetch"),
-        ("fetched_at", _date, "YYYY-MM-DD or RFC3339 UTC — when you took the snapshot"),
-        ("snapshot_sha256", _digest, "sha256 of the exact bytes you fetched, 64 hex"),
-        ("assertion", _text, "what the source says, in at least eight characters"),
+        ("sources", _sources,
+         "a list of {url, snapshot_sha256} — one entry for a single artifact, "
+         "two or more to assert something about how they compare"),
+        ("fetched_at", _date, "YYYY-MM-DD or RFC3339 UTC — when you took the snapshots"),
+        ("assertion", _text, "what the sources say, in at least eight characters"),
     ),
     "E6": (
         ("attestor", _text, "who signed the attestation"),

@@ -148,37 +148,70 @@ def test_a_missing_route_is_json_too(client):
 # --- manifests validated presence but never shape ---
 
 def test_a_manifest_with_junk_values_is_refused(claim_factory, keys):
-    c = claim_factory(manifest={"source": "x", "fetched_at": "y",
-                                "snapshot_sha256": "z", "assertion": "w"})
+    c = claim_factory(manifest={"sources": [{"url": "x", "snapshot_sha256": "z"}],
+                                "fetched_at": "y", "assertion": "w"})
     with pytest.raises(core.Rejection) as exc:
         core.validate(core.canonicalize(c), "claim", public_key=keys["wren"]["public"])
     assert "unusable" in str(exc.value)
     assert "verifier would spend real compute" in str(exc.value)
 
 
-@pytest.mark.parametrize("field,bad", [
-    ("source", "ftp://example.org/x"),
-    ("source", "example.org/x"),
-    ("snapshot_sha256", "abc"),
-    ("snapshot_sha256", "Z" * 64),
-    ("fetched_at", "last Tuesday"),
-    ("assertion", "short"),
+@pytest.mark.parametrize("mutate,field", [
+    (lambda m: m["sources"][0].update(url="ftp://example.org/x"), "sources"),
+    (lambda m: m["sources"][0].update(url="example.org/x"), "sources"),
+    (lambda m: m["sources"][0].update(snapshot_sha256="abc"), "sources"),
+    (lambda m: m["sources"][0].update(snapshot_sha256="Z" * 64), "sources"),
+    (lambda m: m.__setitem__("sources", []), "sources"),
+    (lambda m: m.__setitem__("sources", {"url": "https://example.org/x"}), "sources"),
+    (lambda m: m["sources"].append(dict(m["sources"][0])), "sources"),  # duplicate url
+    (lambda m: m["sources"][0].update(surprise=1), "sources"),
+    (lambda m: m.__setitem__("fetched_at", "last Tuesday"), "fetched_at"),
+    (lambda m: m.__setitem__("assertion", "short"), "assertion"),
 ])
-def test_each_e2_field_is_checked_for_shape(claim_factory, keys, field, bad):
-    m = {"source": "https://example.org/x.json", "fetched_at": "2026-09-01",
-         "snapshot_sha256": "a" * 64, "assertion": "field q is null"}
-    m[field] = bad
+def test_each_e2_field_is_checked_for_shape(claim_factory, keys, mutate, field):
+    m = {"sources": [{"url": "https://example.org/x.json", "snapshot_sha256": "a" * 64}],
+         "fetched_at": "2026-09-01", "assertion": "field q is null"}
+    mutate(m)
     c = claim_factory(manifest=m)
     with pytest.raises(core.Rejection, match=field):
         core.validate(core.canonicalize(c), "claim", public_key=keys["wren"]["public"])
 
 
 def test_a_good_e2_manifest_still_passes(claim_factory, keys):
-    c = claim_factory(manifest={"source": "https://example.org/registry.json",
-                                "fetched_at": "2026-09-01T10:00:00Z",
-                                "snapshot_sha256": "sha256:" + "a" * 64,
-                                "assertion": "twelve entries are past due"})
+    c = claim_factory(manifest={
+        "sources": [{"url": "https://example.org/registry.json",
+                     "snapshot_sha256": "sha256:" + "a" * 64}],
+        "fetched_at": "2026-09-01T10:00:00Z",
+        "assertion": "twelve entries are past due"})
     core.validate(core.canonicalize(c), "claim", public_key=keys["wren"]["public"])
+
+
+def test_e2_accepts_several_sources_so_comparisons_are_claimable(claim_factory, keys):
+    """The work that is not code: two documents that disagree with each other."""
+    c = claim_factory(
+        why="Clinicians following one guideline are told the opposite of the other.",
+        manifest={
+            "sources": [
+                {"label": "guideline A", "url": "https://example.org/a.pdf.json",
+                 "snapshot_sha256": "a" * 64},
+                {"label": "guideline B", "url": "https://example.org/b.pdf.json",
+                 "snapshot_sha256": "b" * 64},
+            ],
+            "fetched_at": "2026-09-01",
+            "assertion": "A recommends X for the same presentation where B recommends not-X",
+        })
+    core.validate(core.canonicalize(c), "claim", public_key=keys["wren"]["public"],
+                  path=core.path_for(c, "claim"))
+
+
+def test_why_is_optional_never_verified_and_carried_on_the_record(claim_factory, keys):
+    """The sentence an agent already writes, which the record used to discard."""
+    plain = claim_factory(why="")
+    core.validate(core.canonicalize(plain), "claim", public_key=keys["wren"]["public"])
+    told = claim_factory(why="An app rendering this field shows a student an "
+                             "impossible subshell.")
+    core.validate(core.canonicalize(told), "claim", public_key=keys["wren"]["public"])
+    assert told["claim_id"] != plain["claim_id"], "why is part of the signed record"
 
 
 # --- the API had no description at all ---

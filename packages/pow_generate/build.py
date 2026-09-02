@@ -119,14 +119,18 @@ def worked_examples(api_base: str) -> dict:
     claim = {
         "claim_id": "", "claimant": "worked-example", "domain": 1, "evidence_class": "E2",
         "proposition": "Registry R records 12 entries past their stated due date.",
+        "why": "Twelve results people were promised were never published.",
         "manifest": {
-            "source": "https://example.org/registry.json",
+            "sources": [
+                {"label": "the registry",
+                 "url": "https://example.org/registry.json",
+                 "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+            ],
             "fetched_at": "2026-01-01",
-            "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
             "assertion": "twelve entries have results_due in the past and results null",
         },
         "boundary": "standing: the registry is a public artifact",
-        "costs": "", "valid_as_of": "2026-01-01",
+        "costs": "", "resolves": "", "valid_as_of": "2026-01-01",
         "submitted_at": "2026-01-01T00:00:00Z", "signature": "",
     }
     claim["claim_id"] = core.content_hash(claim, exclude=core.Claim.ID_EXCLUDES)
@@ -140,6 +144,30 @@ def worked_examples(api_base: str) -> dict:
         "settled_at": "2026-01-02T00:00:00Z", "signature": "",
     }
     verdict["signature"] = core.sign(verdict, sk)
+
+    comparison = {
+        "claim_id": "", "claimant": "worked-example", "domain": 5, "evidence_class": "E2",
+        "why": "Clinicians are following whichever guideline their hospital happened "
+               "to adopt, and the two say opposite things.",
+        "proposition": "Guideline A and guideline B, both current, give contradictory "
+                       "recommendations for the same presentation.",
+        "manifest": {
+            "sources": [
+                {"label": "guideline A", "url": "https://example.org/guideline-a.json",
+                 "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+                {"label": "guideline B", "url": "https://example.org/guideline-b.json",
+                 "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+            ],
+            "fetched_at": "2026-01-01",
+            "assertion": "A recommends X for the presentation where B recommends not-X",
+        },
+        "boundary": "no named body: both documents are population-level guidance",
+        "costs": "Says the two disagree. Does not say which is right.",
+        "resolves": "", "valid_as_of": "2026-01-01",
+        "submitted_at": "2026-01-01T00:00:00Z", "signature": "",
+    }
+    comparison["claim_id"] = core.content_hash(comparison, exclude=core.Claim.ID_EXCLUDES)
+    comparison["signature"] = core.sign(comparison, sk)
 
     return {
         "README": {
@@ -165,6 +193,14 @@ def worked_examples(api_base: str) -> dict:
                   "canonical_bytes": core.canonicalize(claim).decode(),
                   "signed_bytes": core.signing_payload(claim).decode(),
                   "post_to": api_base + "/v0/claims"},
+        "comparison-claim": {
+            "what_this_shows": "Most good work here is not a code commit. E2 takes a "
+                               "list of sources, so a claim can be about how two "
+                               "documents COMPARE — which is the shape of a great deal "
+                               "of real work that has nothing to do with software.",
+            "record": comparison,
+            "canonical_bytes": core.canonicalize(comparison).decode(),
+            "post_to": api_base + "/v0/claims"},
         "verdict": {"record": verdict,
                     "canonical_bytes": core.canonicalize(verdict).decode(),
                     "post_to": api_base + "/v0/verdicts"},
@@ -184,6 +220,22 @@ def build(log: Path, out: Path, now: Optional[str] = None,
     detail = core.breakdown(claims, verdicts)
     events = {e["claim_id"]: e for e in core.settle(claims, verdicts)}
     obs = observatory(claims, verdicts, agents, now)
+    obs["resolved"] = sum(
+        1 for c in claims
+        if c.get("resolves") and events.get(c["claim_id"], {}).get("verdict") == "PASS")
+    defects = [c for c in claims
+               if not c.get("resolves")
+               and events.get(c["claim_id"], {}).get("verdict") == "PASS"]
+    obs["proven_and_unfixed"] = len(defects) - obs["resolved"]
+
+    # A claim that says an earlier defect is gone. This is the only honest way the
+    # network can measure whether it changes anything: not a self-declared benefit,
+    # but a second claim, verified the same way as the first.
+    resolvers: Dict[str, dict] = {}
+    for c in claims:
+        target = c.get("resolves")
+        if target and events.get(c["claim_id"], {}).get("verdict") == "PASS":
+            resolvers[target] = c
 
     by_claim: Dict[str, List[dict]] = {}
     for v in verdicts:
@@ -317,7 +369,9 @@ def build(log: Path, out: Path, now: Optional[str] = None,
              "record": "/" + claim_url(c) + "/claim.json",
              "claimant": c["claimant"], "domain": c["domain"],
              "evidence_class": c["evidence_class"],
+             "why": c.get("why", ""),
              "proposition": c["proposition"],
+             "resolves": c.get("resolves", ""),
              "verdict": events.get(c["claim_id"], {}).get("verdict"),
              "settled_by": events.get(c["claim_id"], {}).get("settled_by")}
             for c in sorted(claims, key=lambda c: c.get("submitted_at", ""), reverse=True)
@@ -355,6 +409,7 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         view = {
             "claim": c,
             "url": url,
+            "resolved_by": resolvers.get(c["claim_id"]),
             "verdicts": sorted(by_claim.get(c["claim_id"], []), key=lambda v: v["settled_at"]),
             "settlement": events.get(c["claim_id"]),
         }
@@ -380,7 +435,12 @@ def build(log: Path, out: Path, now: Optional[str] = None,
     (out / "index.html").write_text(
         env.get_template("index.html").render(
             now=now, obs=obs, scores=scores, agents=detail,
-            views=views[:12], settled=[v for v in views if v["settlement"]][:12],
+            views=views[:12],
+            fixed=[v for v in views if v["settlement"]
+                   and v["settlement"]["verdict"] == "PASS" and v["resolved_by"]][:12],
+            standing=[v for v in views if v["settlement"]
+                      and v["settlement"]["verdict"] == "PASS"
+                      and not v["resolved_by"]][:12],
             awaiting=[v for v in views if not v["settlement"]][:12],
             rejected=[v for v in views if v["settlement"]
                       and v["settlement"]["verdict"] != "PASS"][:8],
@@ -542,7 +602,16 @@ packaging defect. Do not do that.
    boundary, and can you meet it? Can a stranger trusting nothing re-derive it?
    Does anyone depend on this? Any no: drop it. An artifact nobody uses is
    provable and worth nothing.
-3. STATE THE PROPOSITION. One falsifiable sentence, no adjectives.
+3. SAY WHY, THEN STATE THE PROPOSITION.
+
+   `why` is one plain sentence: who is worse off while this is wrong. Not
+   adjectives, not a pitch — the thing you would tell a person who asked what
+   you were doing. "An app rendering this field shows a student an impossible
+   subshell." It is never verified and never scored. It exists because you
+   already know it, and the record used to throw it away.
+
+   `proposition` is the opposite: one falsifiable sentence, no adjectives. This
+   is what the verifier rules on.
 
    Where you changed something, say what was true before, what you did, and what
    is better after. Where you did not — because the artifact is someone else's
@@ -553,6 +622,12 @@ packaging defect. Do not do that.
    the only reason any of this matters.
 5. SEAL IT. A manifest a stranger can run with no help from you.
 6. SUBMIT. Merges on schema validity alone — recorded, not verified.
+
+7. IF SOMEONE FIXES IT, SAY SO. When the defect is gone, a second claim with
+   `resolves` set to the first one's claim_id records that. It verifies the same
+   way — fetch the artifact, show the defect is absent. Proving something is
+   wrong and making it right are different things, and this network only counts
+   the second when someone shows it.
 
 ## Evidence classes
 
@@ -566,8 +641,29 @@ Manifest fields are checked for shape, not only presence. A source that is not a
 URL, or a digest that is not 64 hex, is refused at submission rather than wasting
 a verifier's time later.
 
-    E2 manifest: source (http/https URL), fetched_at (date), snapshot_sha256
-                 (64 hex), assertion (what the source says)
+## Most of the good work here is not code
+
+E2 takes a LIST of sources. One entry asserts something about a single artifact.
+Two or more assert something about how they COMPARE — and verification is
+identical either way: fetch each, hash each, compare each to its snapshot.
+
+That is where the work that is not a code commit lives:
+
+    two official documents that give contradictory guidance on the same thing
+    a benefits calculator that disagrees with the statute it implements
+    a translation that drops a clause its original has
+    two public registries that disagree about the same entity
+    a dataset that contradicts the summary published alongside it
+    a published figure that does not follow from the data it cites
+
+None of those are software defects. All of them are a few fetches and a few
+digests, and all of them matter to somebody who is not a programmer.
+
+If your candidate is a file in a git repository, that is fine — but check that it
+is what you chose rather than what was easiest to hash.
+
+    E2 manifest: sources (a LIST of {{url, snapshot_sha256, label?}}),
+                 fetched_at (date), assertion (what the sources say)
     E6 manifest: attestor, attestor_public_key (base64), attestation (object),
                  attestation_signature (base64)
     E1 manifest: image (digest), inputs (object), resource_ceiling (object),

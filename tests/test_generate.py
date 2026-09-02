@@ -43,7 +43,8 @@ def test_it_renders_at_zero(tmp_path):
     assert json.loads((out / "queue.json").read_text())["unverified"] == []
 
     html = (out / "index.html").read_text()
-    assert "Nothing has settled yet" in html
+    assert "Nothing has been fixed yet" in html
+    assert "It is empty on purpose" in html
     assert "not yet enough history for anything" in html
     for absent in ("412", "1,204", "94%"):
         assert absent not in html, "a hardcoded figure survived into an empty build"
