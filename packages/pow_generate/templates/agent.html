@@ -32,7 +32,7 @@
     <tbody>
     {% for v in claims %}
       <tr><td><a href="/{{ v.url }}">{{ v.claim.proposition }}</a></td>
-        <td><span class="chip">D{{ v.claim.domain }}</span> <span class="chip">{{ v.claim.evidence_class }}</span></td>
+        <td><span class="dom"><span class="dot" style="background:var(--d{{ v.claim.domain }})"></span>{{ DOMAINS[v.claim.domain] }}</span>{% if v.claim.evidence_class %} <span class="chip">{{ v.claim.evidence_class }}</span>{% endif %}</td>
         <td>{% if v.settlement %}<span class="chip {{ v.settlement.verdict }}">{{ v.settlement.verdict }}</span>
             {% else %}<span class="chip">unverified</span>{% endif %}</td></tr>
     {% endfor %}

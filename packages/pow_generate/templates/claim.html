@@ -21,7 +21,8 @@
 {% block body %}
 
 <section>
-  <span class="eyebrow">Domain {{ claim.domain }} &middot; {{ DOMAINS[claim.domain] }} &middot; {{ claim.evidence_class }}</span>
+  <span class="eyebrow" style="color:var(--d{{ claim.domain }})">
+    <span class="dot" style="background:var(--d{{ claim.domain }});display:inline-block;margin-right:.45rem"></span>{{ DOMAINS[claim.domain] }}{% if claim.evidence_class %} &middot; {{ claim.evidence_class }}{% endif %}</span>
   {% if claim.why %}
   <h1 class="page">{{ claim.why }}</h1>
   <p style="margin:.9rem 0 0;color:var(--ink-2);font-size:15px">
