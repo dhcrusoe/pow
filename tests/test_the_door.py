@@ -250,3 +250,65 @@ def test_llms_txt_says_measure_someone_elses_system(site):
     text = (site / "llms.txt").read_text()
     assert "measure somebody else's system, not your own" in text.lower()
     assert "helps nobody but you" in text
+
+
+# --- the API was write-only, so nobody could confirm a write landed ---
+
+@pytest.fixture
+def enrolled(tmp_path, keys):
+    """A client whose agents exist — writes need an enrolled key."""
+    backend = LocalBackend(tmp_path / "log")
+    for name, kp in keys.items():
+        rec = {"pseudonym": name, "public_key": kp["public"],
+               "enrolled_at": "2026-08-29T09:00:00Z"}
+        rec["signature"] = core.sign(rec, kp["private"])
+        backend.put(f"agents/{name}.json", core.canonicalize(rec), f"enroll {name}")
+    app = create_app(backend)
+    app.config["TESTING"] = True
+    return app.test_client()
+
+def test_you_can_read_back_what_you_wrote(enrolled, claim_factory):
+    """Two agents resorted to POSTing a duplicate and reading the 409."""
+    c = claim_factory()
+    assert enrolled.post("/v0/claims", data=core.canonicalize(c),
+                       content_type="application/json").status_code == 201
+    body = enrolled.get("/v0/claims").get_json()
+    assert any(x["claim_id"] == c["claim_id"] for x in body["claims"])
+    one = enrolled.get(f"/v0/claims/{c['claim_id']}").get_json()
+    assert one["claim"]["claim_id"] == c["claim_id"]
+    assert one["quorum"] == 1 and one["verifiers_so_far"] == 0
+
+
+def test_reads_are_filterable(enrolled, claim_factory):
+    enrolled.post("/v0/claims", data=core.canonicalize(claim_factory(claimant="wren")),
+                content_type="application/json")
+    assert enrolled.get("/v0/claims?claimant=wren").get_json()["claims"]
+    assert enrolled.get("/v0/claims?claimant=nobody").get_json()["claims"] == []
+
+
+def test_public_keys_are_readable_from_the_api(enrolled, keys):
+    body = enrolled.get("/v0/agents").get_json()
+    by_name = {a["pseudonym"]: a for a in body["agents"]}
+    for name, kp in keys.items():
+        assert by_name[name]["public_key"] == kp["public"]
+    assert "transport and not authority" in body["note"]
+    assert enrolled.get("/v0/agents/wren").get_json()["public_key"] == keys["wren"]["public"]
+
+
+def test_an_unknown_claim_reads_as_a_named_rejection(client):
+    r = client.get("/v0/claims/" + "0" * 64)
+    assert r.status_code == 404 and r.get_json()["error"]["rule"] == "unknown_claim"
+
+
+def test_a_decimal_is_not_a_sentence_break(claim_factory, keys):
+    """The one domain about measurement could not state a measurement."""
+    c = claim_factory(proposition="Column T carries two scales: 13.17% on one sheet "
+                                  "and 0.1317 on another, so 2,221.47 exceeds 1,156.85.")
+    core.validate(core.canonicalize(c), "claim", public_key=keys["wren"]["public"])
+
+
+def test_genuinely_several_sentences_still_fails(claim_factory, keys):
+    c = claim_factory(proposition="This is one thing. This is another. And a third. "
+                                  "And a fourth thing entirely.")
+    with pytest.raises(core.Rejection, match="reads as"):
+        core.validate(core.canonicalize(c), "claim", public_key=keys["wren"]["public"])

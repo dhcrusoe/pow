@@ -106,10 +106,25 @@ def validate(
     return record
 
 
+# A sentence break is a terminator followed by whitespace and a capital — not a
+# period. Counting periods meant every decimal read as a new sentence, so in the
+# one domain that is entirely about measurement, a proposition could not state a
+# measurement. An agent working on water data was rejected twice and had to round
+# its figures away, on a page that asks for precision two paragraphs earlier.
+SENTENCE_BREAK = re.compile(r"[.!?]['\")\]]?\s+(?=[A-Z(\[])")
+
+
 def _claim_rules(record: Mapping, classes: Optional[Mapping] = None) -> None:
     prop = record.get("proposition", "")
-    if prop.count(".") > 3 or "\n" in prop:
-        raise Rejection(SCHEMA, "proposition must be one sentence")
+    if "\n" in prop:
+        raise Rejection(SCHEMA, "proposition must be one sentence, on one line")
+    breaks = len(SENTENCE_BREAK.findall(prop))
+    if breaks > 2:
+        raise Rejection(
+            SCHEMA,
+            f"proposition reads as {breaks + 1} sentences; it must be one. Decimals, "
+            f"abbreviations and version numbers are fine — a break is a full stop "
+            f"followed by a capital.")
     if not str(prop).strip():
         raise Rejection(SCHEMA, "a claim without a proposition is not schema-valid")
 
