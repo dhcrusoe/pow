@@ -21,6 +21,8 @@ from .identity import (
 )
 from .records import (
     BOUNDARIES,
+    DEFAULT_QUORUM,
+    PATHS,
     DOMAINS,
     EVIDENCE_CLASSES,
     VERDICTS,
@@ -31,7 +33,9 @@ from .records import (
     Verdict,
     json_schemas,
 )
-from .score import FRAUD_CAUGHT, VERIFICATION, WEIGHTS, breakdown, score, settle
+from .score import (
+    FRAUD_CAUGHT, VERIFICATION, WEIGHTS, breakdown, quorum_for, score, settle,
+)
 from .validate import parse, path_for, validate
 
 __version__ = "0.1.0"
@@ -40,8 +44,10 @@ __all__ = [
     "generate", "sign", "verify", "content_hash", "short", "signing_payload",
     "b64", "unb64", "identity",
     "valid_pseudonym", "Claim", "Verdict", "Seal", "Handout", "Enrollment",
-    "VERDICTS", "EVIDENCE_CLASSES", "DOMAINS", "BOUNDARIES", "json_schemas",
-    "score", "breakdown", "settle", "WEIGHTS", "VERIFICATION", "FRAUD_CAUGHT",
+    "VERDICTS", "EVIDENCE_CLASSES", "DOMAINS", "BOUNDARIES", "PATHS",
+    "DEFAULT_QUORUM", "json_schemas",
+    "score", "breakdown", "settle", "quorum_for", "WEIGHTS", "VERIFICATION",
+    "FRAUD_CAUGHT",
     "validate", "parse", "path_for", "assign", "draw", "draw_seed", "eligible",
     "held_lease",
 ]

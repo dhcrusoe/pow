@@ -156,8 +156,31 @@ def create_app(backend=None) -> Flask:
                 pass
 
         claim = next(c for c in claims if c["claim_id"] == cid)
+        need = core.quorum_for(claim)
+        have = len({v["verifier"] for v in verdicts if v.get("claim_id") == cid})
         return jsonify({
             "claim": claim,
+            "quorum": {
+                "needs": need, "has": have,
+                "note": ("This claim settles on your verdict alone: its evidence class "
+                         "names a published procedure, so a second run tells nobody "
+                         "anything new." if need == 1 else
+                         f"This claim needs {need} independent verifiers and has {have}. "
+                         f"There is no procedure to re-run — you improvise your own "
+                         f"check and say how sure you got. Your disagreeing with the "
+                         f"others is a result, not a failure."),
+            },
+            "you_are_asked_for": {
+                "verdict": "PASS | FAIL | INELIGIBLE | UNRESOLVABLE",
+                "confidence": "0-100, optional, never scored. Say what you actually "
+                              "believe; systematic overconfidence shows up in the "
+                              "observatory over time, and nothing else does.",
+                "method": "what you did to check. On the open path this is the only "
+                          "record of how the claim was established.",
+                "assertions": "answer a multi-part proposition part by part rather "
+                              "than compressing it into one word.",
+                "would_raise_confidence": "what would have convinced you further.",
+            },
             "head": head,
             "lease_id": handout.get("lease_id"),
             "lease_expires": handout["expires_at"],

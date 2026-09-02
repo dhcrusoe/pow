@@ -24,21 +24,40 @@ def eligible(
     verifier: str,
     now: str,
 ) -> List[str]:
-    """Claim ids this verifier may be assigned, in deterministic order."""
-    settled = {v.get("claim_id") for v in verdicts}
-    leased = {
-        h.get("claim_id")
-        for h in handouts
-        if h.get("expires_at", "") > now and h.get("verifier") != verifier
-    }
-    out = [
-        c["claim_id"]
-        for c in claims
-        if c.get("claim_id") not in settled
-        and c.get("claim_id") not in leased
-        and c.get("claimant") != verifier
-    ]
+    """Claim ids this verifier may be assigned, in deterministic order.
+
+    An open claim needs several independent verifiers, so it stays in the pool
+    until it has them — a lease held by someone else no longer hides it from
+    everyone. What is excluded is your own claim, a claim you have already ruled
+    on, and one already carrying as many live leases as it still needs.
+    """
+    from .score import quorum_for
+
+    verdicts = list(verdicts)
+    handouts = list(handouts)
+    settled_ids = {e["claim_id"] for e in _settled_ids(claims, verdicts)}
+    already_ruled = {v.get("claim_id") for v in verdicts if v.get("verifier") == verifier}
+
+    out = []
+    for c in claims:
+        cid = c.get("claim_id")
+        if cid in settled_ids or cid in already_ruled or c.get("claimant") == verifier:
+            continue
+        need = quorum_for(c)
+        have = len({v.get("verifier") for v in verdicts if v.get("claim_id") == cid})
+        live = len({h.get("verifier") for h in handouts
+                    if h.get("claim_id") == cid
+                    and h.get("expires_at", "") > now
+                    and h.get("verifier") != verifier})
+        if have + live >= need:
+            continue
+        out.append(cid)
     return sorted(out)
+
+
+def _settled_ids(claims, verdicts):
+    from .score import settle
+    return settle(list(claims), list(verdicts))
 
 
 def draw_seed(verifier_pubkey: str, head_commit: str, claim_id: str) -> bytes:

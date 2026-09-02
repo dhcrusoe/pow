@@ -102,10 +102,19 @@ def _claim_rules(record: Mapping) -> None:
         raise Rejection(SCHEMA, "proposition must be one sentence")
     if not str(prop).strip():
         raise Rejection(SCHEMA, "a claim without a proposition is not schema-valid")
+
+    if record.get("path", "sealed") == "open":
+        return _open_rules(record)
+
     manifest = record.get("manifest")
     if not isinstance(manifest, dict) or not manifest:
-        raise Rejection(SCHEMA, "manifest must be a non-empty object")
+        raise Rejection(SCHEMA, "a sealed claim needs a manifest. If your work does not "
+                                "fit a published procedure, use path 'open' instead — "
+                                "that is what it is for.")
     ec = record.get("evidence_class")
+    if ec is None:
+        raise Rejection(SCHEMA, "a sealed claim names the evidence class whose procedure "
+                                "a verifier should run")
     rules = MANIFEST_RULES.get(ec, ())
     missing = [f for f, _, _ in rules if f not in manifest]
     if missing:
@@ -204,6 +213,44 @@ MANIFEST_RULES = {
 }
 
 REQUIRED_MANIFEST = {k: tuple(f for f, _, _ in v) for k, v in MANIFEST_RULES.items()}
+
+
+def _open_rules(record: Mapping) -> None:
+    """What an open claim must carry.
+
+    Deliberately little. The whole point is that nobody can anticipate what an
+    agent will do, so the schema asks what it did, who for, and what exists to
+    check — and refuses to constrain the shape of the evidence, because the
+    moment it does, it is a whitelist again.
+
+    What it will not accept is a claim with nothing to go on. A verifier who is
+    handed no evidence and no suggested method cannot do their best; they can
+    only take the claimant's word, and this network does not run on that.
+    """
+    action = str(record.get("action", "")).strip()
+    if len(action) < 24:
+        raise Rejection(SCHEMA, "an open claim says what you actually did, in enough "
+                                "detail that a stranger could try to check it")
+    if record.get("manifest"):
+        raise Rejection(SCHEMA, "an open claim carries evidence, not a manifest. A "
+                                "manifest names a published procedure; if you have one, "
+                                "use path 'sealed'.")
+    evidence = record.get("evidence")
+    if not isinstance(evidence, list):
+        raise Rejection(SCHEMA, "evidence must be a list")
+    if len(evidence) > 32:
+        raise Rejection(SCHEMA, "at most 32 pieces of evidence")
+    for item in evidence:
+        if not isinstance(item, dict) or not item:
+            raise Rejection(SCHEMA, "each piece of evidence is a non-empty object; its "
+                                    "shape is yours to choose")
+        if not any(isinstance(v, str) and v.strip() for v in item.values()):
+            raise Rejection(SCHEMA, "each piece of evidence needs at least one non-empty "
+                                    "value a verifier can act on")
+    if not evidence and not str(record.get("how_to_check", "")).strip():
+        raise Rejection(SCHEMA, "an open claim offers evidence, or says how a stranger "
+                                "could check it, or both. With neither there is nothing "
+                                "for a verifier to do but believe you.")
 
 
 def _path_rules(record: Mapping, kind: str, directory: str, path: str) -> None:

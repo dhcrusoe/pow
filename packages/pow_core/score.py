@@ -10,7 +10,7 @@ whole decomposability claim, and it is property-tested rather than asserted.
 """
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from typing import Dict, Iterable, List, Mapping, Tuple
 
 WEIGHTS: Dict[str, int] = {
@@ -34,22 +34,50 @@ FRAUD_CAUGHT = 8
 
 
 def _manifest_key(claim: Mapping) -> Tuple[str, str]:
+    """What makes two claims 'the same artifact' for the collapse rule.
+
+    Sealed claims collapse on the manifest. Open claims have no manifest, so they
+    collapse on the action and the evidence offered — which is the closest a
+    second implementation can get to the same answer without judgement.
+    """
     from .canonical import canonicalize
     import hashlib
 
-    manifest = claim.get("manifest", {})
-    digest = hashlib.sha256(canonicalize(manifest)).hexdigest()
+    if claim.get("path") == "open":
+        body = {"action": claim.get("action", ""),
+                "evidence": claim.get("evidence", [])}
+    else:
+        body = claim.get("manifest", {})
+    digest = hashlib.sha256(canonicalize(body)).hexdigest()
     return (claim.get("claimant", ""), digest)
+
+
+def quorum_for(claim: Mapping) -> int:
+    """How many independent verifiers a claim needs before it settles.
+
+    A sealed claim needs one: the procedure is published, so a second run tells
+    you nothing the first did not. An open claim needs several, because there is
+    no procedure to re-run — only strangers improvising, and the thing that
+    substitutes for certainty is their independent agreement.
+    """
+    from .records import DEFAULT_QUORUM
+    return DEFAULT_QUORUM.get(claim.get("path", "sealed"), 1)
 
 
 def settle(
     claims: Iterable[Mapping],
     verdicts: Iterable[Mapping],
 ) -> List[dict]:
-    """Return one settlement event per claim, in claim_id order.
+    """Return one settlement event per settled claim, in claim_id order.
 
-    A settlement is the first verdict recorded against a claim. Deterministic:
-    ties on identical timestamps break on verifier name.
+    Sealed: the first verdict settles it. Open: the claim settles once quorum is
+    reached, and the outcome is the majority verdict among those verifiers —
+    with ties, and any claim short of quorum, left unsettled and scoring nothing.
+
+    The spread is kept, not collapsed. Five verifiers agreeing at high confidence
+    and five disagreeing are different facts, and a single enum would destroy the
+    difference. Score reads only `verdict`; everything else here is for the
+    record and the observatory.
     """
     by_claim: Dict[str, List[Mapping]] = defaultdict(list)
     for v in verdicts:
@@ -62,16 +90,48 @@ def settle(
             by_claim.get(cid, []),
             key=lambda v: (v.get("settled_at", ""), v.get("verifier", "")),
         )
-        if not vs:
+        # One verifier, one voice: a re-run by the same agent is not independence.
+        seen, unique = set(), []
+        for v in vs:
+            who = v.get("verifier", "")
+            if who not in seen:
+                seen.add(who)
+                unique.append(v)
+
+        need = quorum_for(claim)
+        if len(unique) < need:
             continue
+
+        deciding = unique[:need]
+        tally = Counter(v.get("verdict") for v in deciding)
+        top, count = tally.most_common(1)[0]
+        if len([v for v, n in tally.items() if n == count]) > 1:
+            continue  # a tied quorum has not decided anything
+
+        confidences = [v["confidence"] for v in deciding
+                       if isinstance(v.get("confidence"), int)]
+        agreeing = [v for v in deciding if v.get("verdict") == top]
+
         events.append({
             "claim_id": cid,
             "claimant": claim.get("claimant", ""),
-            "verdict": vs[0].get("verdict"),
-            "settled_at": vs[0].get("settled_at", ""),
-            "settled_by": vs[0].get("verifier", ""),
+            "path": claim.get("path", "sealed"),
+            "verdict": top,
+            "settled_at": deciding[-1].get("settled_at", ""),
+            "settled_by": deciding[-1].get("verifier", ""),
+            "verifiers": [v.get("verifier", "") for v in deciding],
+            "quorum": need,
+            "agreement": round(100 * count / need),
+            "unanimous": count == need,
+            "confidence_mean": round(sum(confidences) / len(confidences))
+                               if confidences else None,
+            "confidence_low": min(confidences) if confidences else None,
+            "confidence_high": max(confidences) if confidences else None,
+            "dissent": [{"verifier": v.get("verifier", ""), "verdict": v.get("verdict"),
+                         "diagnosis": v.get("diagnosis", "")}
+                        for v in deciding if v.get("verdict") != top],
             "manifest_key": _manifest_key(claim)[1],
-            "reruns": len(vs) - 1,
+            "reruns": len(unique) - need,
         })
     return events
 
@@ -94,7 +154,9 @@ def score(
         counted.add(key)
         totals[event["claimant"]] += WEIGHTS.get(event["verdict"], 0)
 
-    # Verifier side: every completed verification earns, including re-runs.
+    # Verifier side: every completed verification earns, including re-runs and
+    # verdicts on claims that never reached quorum. The work was done either way,
+    # and a verifier cannot control whether four other agents show up.
     for v in verdicts:
         verifier = v.get("verifier", "")
         if not verifier:
