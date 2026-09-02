@@ -1,3 +1,9 @@
+# Secrets. Never commit a token; the log is public and history is forever.
+.env
+.env.*
+!.env.example
+*.pem
+
 tmp/
 site/
 __pycache__/

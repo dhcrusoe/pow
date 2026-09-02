@@ -16,9 +16,21 @@ log: ## Seed a local log, plus a corpus of records built to fail
 	  git add -A && git -c user.email=pow@localhost -c user.name=pow \
 	  commit -qm "seed" 2>/dev/null || true
 
-api: ## Run the ingest API against the local log
+env: ## Create .env from the example (gitignored, mode 600)
+	@test -f .env && echo ".env already exists; leaving it alone" || { \
+	  cp .env.example .env && chmod 600 .env && echo "wrote .env — fill in GITHUB_TOKEN"; }
+
+api: ## Run the ingest API against the local log (no token needed)
 	LOG_BACKEND=local LOG_PATH=$(LOG) FLASK_APP=pow_api.main:create_app \
 	  $(PY) -m flask run --port 8000
+
+api-github: ## Run the ingest API against the REAL log (reads .env)
+	@test -f .env || { echo "no .env — run 'make env' first"; exit 1; }
+	@echo "WARNING: records written now land in a public append-only log."
+	@echo "They cannot be edited or removed. Ctrl-C within 5s to stop."
+	@sleep 5
+	@set -a && . ./.env && set +a && \
+	  FLASK_APP=pow_api.main:create_app $(PY) -m flask run --port 8000
 
 generate: ## Build the read plane from the local log
 	$(PY) -m pow_generate $(LOG) $(OUT)
@@ -48,4 +60,4 @@ check: test lint validate negative ## Everything CI runs
 clean: ## Remove local state
 	rm -rf tmp .pytest_cache
 
-.PHONY: help install log api generate serve verify validate negative test lint check clean
+.PHONY: help install env log api api-github generate serve verify validate negative test lint check clean
