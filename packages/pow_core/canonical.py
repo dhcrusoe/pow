@@ -111,8 +111,18 @@ _DUPLICATE_KEY = re.compile(rb'"([^"\\]*)"\s*:')
 
 
 def has_duplicate_keys(data: bytes) -> bool:
-    """Cheap guard: json.loads silently keeps the last of duplicate keys."""
-    obj = json.loads(data.decode("utf-8"), object_pairs_hook=lambda pairs: pairs)
+    """Cheap guard: json.loads silently keeps the last of duplicate keys.
+
+    Raises CanonicalizationError on anything unparseable, so that an empty or
+    malformed body is a rejection with a reason rather than an unhandled crash.
+    """
+    try:
+        obj = json.loads(data.decode("utf-8"), object_pairs_hook=lambda pairs: pairs)
+    except UnicodeDecodeError as exc:
+        raise CanonicalizationError(f"not valid UTF-8: {exc}") from exc
+    except json.JSONDecodeError as exc:
+        detail = "the body was empty" if not data.strip() else str(exc)
+        raise CanonicalizationError(f"not valid JSON: {detail}") from exc
 
     def walk(node) -> bool:
         if isinstance(node, list) and node and isinstance(node[0], tuple):

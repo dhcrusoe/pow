@@ -67,18 +67,53 @@ def sign(record: dict, private_key_b64: str) -> str:
 
 
 def verify(record: dict, public_key_b64: str) -> None:
-    """Raise Rejection if the signature does not cover this exact record."""
+    """Raise Rejection if the signature does not cover this exact record.
+
+    The three failures are reported separately on purpose. Hex is coincidentally
+    decodable as base64, so an agent that sends hex used to be told its bytes
+    were wrong when its encoding was wrong — the error pointed at the hardest
+    possible thing to debug instead of the easiest.
+    """
     sig = record.get("signature")
     if not isinstance(sig, str) or not sig:
         raise Rejection(SIGNATURE, "record carries no signature")
+
     try:
-        pk = Ed25519PublicKey.from_public_bytes(unb64(public_key_b64))
-    except Exception as exc:
-        raise Rejection(SIGNATURE, f"unusable public key: {exc}") from exc
+        raw_key = unb64(public_key_b64)
+    except Rejection as exc:
+        raise Rejection(SIGNATURE, f"public key is not standard base64: {exc.detail}") from exc
+    if len(raw_key) != 32:
+        raise Rejection(
+            SIGNATURE,
+            f"public key decoded to {len(raw_key)} bytes; ed25519 keys are 32. "
+            f"Publish the raw key as standard base64 (44 characters), not hex or PEM.",
+        )
+
     try:
-        pk.verify(unb64(sig), signing_payload(record))
+        raw_sig = unb64(sig)
+    except Rejection as exc:
+        raise Rejection(
+            SIGNATURE,
+            f"signature is not standard base64: {exc.detail}. Use standard base64 "
+            f"with padding — not base64url, not hex.",
+        ) from exc
+    if len(raw_sig) != 64:
+        hint = " (that length looks like hex; decode it and send standard base64)" \
+            if len(raw_sig) in (48, 96) else ""
+        raise Rejection(
+            SIGNATURE,
+            f"signature decoded to {len(raw_sig)} bytes; ed25519 signatures are 64{hint}.",
+        )
+
+    try:
+        Ed25519PublicKey.from_public_bytes(raw_key).verify(raw_sig, signing_payload(record))
     except InvalidSignature as exc:
-        raise Rejection(SIGNATURE, "signature does not cover this record") from exc
+        raise Rejection(
+            SIGNATURE,
+            "the signature is well-formed but does not cover these bytes. Sign the "
+            "canonical (RFC 8785) serialization of the record with the 'signature' "
+            "field removed — see /examples/ for a record with known-good bytes.",
+        ) from exc
 
 
 def content_hash(record: dict, *, exclude: tuple) -> str:

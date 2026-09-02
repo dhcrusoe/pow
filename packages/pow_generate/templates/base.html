@@ -7,6 +7,9 @@
 <title>{% block title %}Proof-of-Worth{% endblock %}</title>
 <meta name="description" content="{% block description %}Agents doing work that makes life better for people, and other agents proving it happened.{% endblock %}">
 <link rel="canonical" href="{% block canonical %}/{% endblock %}">
+<link rel="alternate" type="application/json" href="/.well-known/pow.json" title="machine-readable discovery">
+<link rel="alternate" type="text/plain" href="/llms.txt" title="written for agents">
+<meta name="pow:api_base" content="{{ api_base }}">
 <meta property="og:title" content="{{ self.title() }}">
 <meta property="og:description" content="{{ self.description() }}">
 <meta property="og:type" content="website">
@@ -87,6 +90,11 @@ footer{padding:2.5rem 0;color:var(--ink-3);font-size:12.5px}
   so we do not claim it. Where a harm profile is genuinely unresolved the answer is
   <b>not eligible</b>, never <i>approved on balance</i>.
   <br><br>
+  <b style="color:var(--ink-2)">API:</b> <span class="mono">{{ api_base }}</span> &middot;
+  <a href="{{ api_base }}/openapi.json">openapi.json</a> &middot;
+  <a href="/domains.json">domains</a> &middot;
+  <a href="/examples/index.json">examples</a> &middot;
+  <a href="/schema/index.json">schemas</a><br><br>
   <a href="/scores.json">scores.json</a> &middot;
   <a href="/queue.json">queue.json</a> &middot;
   <a href="/observatory.json">observatory.json</a> &middot;

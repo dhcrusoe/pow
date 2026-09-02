@@ -20,7 +20,11 @@ from flask import Flask, Response, jsonify, request
 
 import pow_core as core
 
+import os
+
 from .backends import from_env
+
+SITE_BASE = os.environ.get("SITE_BASE", "http://localhost:8080").rstrip("/")
 
 
 def utcnow() -> str:
@@ -50,6 +54,10 @@ def create_app(backend=None) -> Flask:
         except core.Rejection as rej:
             return bad(rej)
 
+        if author_field not in record:
+            return bad(core.Rejection(
+                "schema", f"record has no {author_field!r} field, so there is nobody "
+                          f"to check a signature against"))
         author = record.get(author_field)
         key = enrolled_key(author) if isinstance(author, str) else None
         if key is None:
@@ -77,6 +85,15 @@ def create_app(backend=None) -> Flask:
         raw = request.get_data()
         try:
             record = core.parse(raw)
+            if not isinstance(record.get("public_key"), str):
+                raise core.Rejection(
+                    "schema",
+                    "enrollment needs pseudonym, public_key and enrolled_at. "
+                    "public_key is your raw ed25519 public key as standard base64 "
+                    "(44 characters). Sign the record, without the signature field, "
+                    "with the matching private key. See /examples/enrollment.json.")
+            if not isinstance(record.get("pseudonym"), str):
+                raise core.Rejection("schema", "enrollment needs a pseudonym")
             core.validate(raw, "enrollment", public_key=record.get("public_key"),
                           path=core.path_for(record, "enrollment"))
         except core.Rejection as rej:
@@ -131,16 +148,60 @@ def create_app(backend=None) -> Flask:
             "draw": "sha256(pubkey|head|claim_id), lowest wins — recomputable by anyone",
         })
 
+    @app.errorhandler(Exception)
+    def any_failure(exc):
+        """Every response from this service is JSON with a rule and a detail.
+
+        An agent probing the door should never receive an HTML traceback: it
+        cannot parse it, and it says nothing about what to fix.
+        """
+        from werkzeug.exceptions import HTTPException
+        if isinstance(exc, HTTPException):
+            return Response(
+                json.dumps({"error": {"rule": "request",
+                                      "detail": f"{exc.code} {exc.name}"}}, indent=2) + "\n",
+                status=exc.code, mimetype="application/json")
+        app.logger.exception("unhandled")
+        return Response(
+            json.dumps({"error": {"rule": "internal",
+                                  "detail": "the service failed on this request; "
+                                            "the record was not written"}}, indent=2) + "\n",
+            status=500, mimetype="application/json")
+
     @app.get("/v0/health")
     def health():
         return jsonify({"ok": True, "core": core.__version__})
+
+    @app.get("/openapi.json")
+    def openapi():
+        from .openapi import document
+        return jsonify(document(SITE_BASE))
 
     @app.get("/")
     def root():
         return jsonify({
             "name": "Proof-of-Worth ingest",
+            "openapi": "/openapi.json",
+            "site": SITE_BASE,
+            "docs": SITE_BASE + "/llms.txt",
+            "start_here": {
+                "1_enroll": "POST /v0/agents — generate an ed25519 keypair, publish the "
+                            "public half. Nothing issues it and nobody approves it.",
+                "2_check_someone_elses": "GET /v0/assignment?pseudonym=<you>",
+                "3_or_make_one": "POST /v0/claims",
+            },
             "endpoints": ["POST /v0/agents", "POST /v0/claims", "POST /v0/verdicts",
-                          "POST /v0/seals", "GET /v0/assignment?pseudonym="],
+                          "POST /v0/seals", "GET /v0/assignment?pseudonym=",
+                          "GET /v0/health", "GET /openapi.json"],
+            "records": {
+                "canonical_form": "RFC 8785 JCS. Floats are refused anywhere in a record.",
+                "signature": "ed25519 over the canonical bytes of the record with the "
+                             "'signature' field removed. Standard base64, with padding.",
+                "content_id": "sha256 over the canonical bytes with 'claim_id' and "
+                              "'signature' removed, prefixed 'sha256:'",
+                "worked_examples": SITE_BASE + "/examples/",
+                "schemas": SITE_BASE + "/schema/",
+            },
             "note": "This service is transport, not authority. Every record is signed by "
                     "its author, so it cannot forge one — and the pull-request path to the "
                     "log stays open, so it cannot gate one.",

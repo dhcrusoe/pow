@@ -106,17 +106,80 @@ def _claim_rules(record: Mapping) -> None:
     if not isinstance(manifest, dict) or not manifest:
         raise Rejection(SCHEMA, "manifest must be a non-empty object")
     ec = record.get("evidence_class")
-    required = REQUIRED_MANIFEST.get(ec, ())
-    missing = [k for k in required if k not in manifest]
+    rules = MANIFEST_RULES.get(ec, ())
+    missing = [f for f, _, _ in rules if f not in manifest]
     if missing:
-        raise Rejection(SCHEMA, f"{ec} manifest is missing: {', '.join(missing)}")
+        wanted = "; ".join(f"{f}: {why}" for f, _, why in rules if f in missing)
+        raise Rejection(SCHEMA, f"{ec} manifest is missing {', '.join(missing)} — {wanted}")
+    for field, ok, why in rules:
+        if not ok(manifest[field]):
+            raise Rejection(
+                SCHEMA,
+                f"{ec} manifest field {field!r} is present but unusable. Expected {why}. "
+                f"A verifier would spend real compute on this before discovering it "
+                f"cannot be run.",
+            )
 
 
-REQUIRED_MANIFEST = {
-    "E1": ("image", "inputs", "resource_ceiling", "expected_output_hash"),
-    "E2": ("source", "fetched_at", "snapshot_sha256", "assertion"),
-    "E6": ("attestor", "attestor_public_key", "attestation", "attestation_signature"),
+SHA256 = re.compile(r"^(sha256:)?[0-9a-f]{64}$")
+HTTP_URL = re.compile(r"^https?://[^\s/]+\.[^\s/]+(/.*)?$")
+B64_32 = re.compile(r"^[A-Za-z0-9+/]{43}=$")
+
+
+def _url(v):
+    return isinstance(v, str) and bool(HTTP_URL.match(v))
+
+
+def _digest(v):
+    return isinstance(v, str) and bool(SHA256.match(v))
+
+
+def _date(v):
+    return isinstance(v, str) and bool(ISO.match(v))
+
+
+def _text(v):
+    return isinstance(v, str) and len(v.strip()) >= 8
+
+
+def _obj(v):
+    return isinstance(v, dict) and bool(v)
+
+
+def _key32(v):
+    return isinstance(v, str) and bool(B64_32.match(v))
+
+
+def _sig(v):
+    return isinstance(v, str) and len(v) >= 64
+
+
+# Field presence was never enough. A manifest carrying source="x" and
+# snapshot_sha256="z" passed every check, merged, and then burned a verifier's
+# container run before settling UNRESOLVABLE. Cheap shape checks at ingest stop
+# a whole class of garbage from ever reaching someone else's compute.
+MANIFEST_RULES = {
+    "E1": (
+        ("image", _digest, "an image digest, e.g. sha256:<64 hex>"),
+        ("inputs", _obj, "a non-empty object mapping names to content addresses"),
+        ("resource_ceiling", _obj, "an object, e.g. {\"cpu_seconds\": 600, \"memory_mib\": 2048}"),
+        ("expected_output_hash", _digest, "sha256:<64 hex>"),
+    ),
+    "E2": (
+        ("source", _url, "an http(s) URL a stranger can fetch"),
+        ("fetched_at", _date, "YYYY-MM-DD or RFC3339 UTC — when you took the snapshot"),
+        ("snapshot_sha256", _digest, "sha256 of the exact bytes you fetched, 64 hex"),
+        ("assertion", _text, "what the source says, in at least eight characters"),
+    ),
+    "E6": (
+        ("attestor", _text, "who signed the attestation"),
+        ("attestor_public_key", _key32, "base64 ed25519 public key, 44 chars"),
+        ("attestation", _obj, "a non-empty object — what they are attesting to"),
+        ("attestation_signature", _sig, "base64 ed25519 signature over the attestation"),
+    ),
 }
+
+REQUIRED_MANIFEST = {k: tuple(f for f, _, _ in v) for k, v in MANIFEST_RULES.items()}
 
 
 def _path_rules(record: Mapping, kind: str, directory: str, path: str) -> None:

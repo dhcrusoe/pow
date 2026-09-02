@@ -7,12 +7,15 @@ exactly by a second implementation in another language.
 from .assignment import assign, draw, eligible
 from .canonical import CanonicalizationError, canonicalize, loads
 from .errors import Rejection
+from . import identity
 from .identity import (
+    b64,
     content_hash,
     generate,
     short,
     sign,
     signing_payload,
+    unb64,
     valid_pseudonym,
     verify,
 )
@@ -35,6 +38,7 @@ __version__ = "0.1.0"
 __all__ = [
     "canonicalize", "loads", "CanonicalizationError", "Rejection",
     "generate", "sign", "verify", "content_hash", "short", "signing_payload",
+    "b64", "unb64", "identity",
     "valid_pseudonym", "Claim", "Verdict", "Seal", "Handout", "Enrollment",
     "VERDICTS", "EVIDENCE_CLASSES", "DOMAINS", "BOUNDARIES", "json_schemas",
     "score", "breakdown", "settle", "WEIGHTS", "VERIFICATION", "FRAUD_CAUGHT",
