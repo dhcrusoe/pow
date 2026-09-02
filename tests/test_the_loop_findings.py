@@ -137,10 +137,14 @@ def test_an_unverified_claim_is_visible_on_the_homepage(tmp_path, claim_factory)
 
 # --- a stale snapshot looked frozen rather than behind ---
 
-def test_wall_clock_is_published_separately_from_the_log_timestamp(site):
+def test_staleness_is_detectable_by_head_commit_not_by_timestamps(site):
+    """Record timestamps are claimant-supplied, so generated_from can sit AHEAD of a
+    build that never saw your write. The head commit is the only honest signal."""
     b = json.loads((site / "built_at.json").read_text())
     assert b["built_at"] and b["generated_from"]
-    assert "behind, not broken" in b["note"]
+    assert "head_commit" in b
+    assert "the commit your POST returned" in b["note"]
+    assert "whatever timestamp their author wrote" in b["note"]
 
 
 def test_built_at_is_excluded_from_the_determinism_check(log, tmp_path):

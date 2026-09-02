@@ -24,6 +24,7 @@ from .identity import content_hash, valid_pseudonym, verify
 ISO = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$")
 KINDS = {
     "claim": (records.Claim, "claim_id", "claims"),
+    "research": (records.Research, "research_id", "research"),
     "verdict": (records.Verdict, None, "verdicts"),
     "seal": (records.Seal, "seal_id", "seals"),
     "enrollment": (records.Enrollment, None, "agents"),
@@ -74,6 +75,8 @@ def validate(
 
     if kind == "claim":
         _claim_rules(record)
+    if kind == "research":
+        _research_rules(record)
 
     if id_field:
         expected = content_hash(record, exclude=model.ID_EXCLUDES)
@@ -240,6 +243,11 @@ def _open_rules(record: Mapping) -> None:
         raise Rejection(SCHEMA, "evidence must be a list")
     if len(evidence) > 32:
         raise Rejection(SCHEMA, "at most 32 pieces of evidence")
+    # Two agents in a row published a digest of the artifact they made and had no
+    # way to publish the artifact. A digest proves nothing to anyone who cannot
+    # obtain the bytes: the network could see the finding and not the work.
+    # Small text artifacts now travel inside the record.
+    total = 0
     for item in evidence:
         if not isinstance(item, dict) or not item:
             raise Rejection(SCHEMA, "each piece of evidence is a non-empty object; its "
@@ -247,10 +255,55 @@ def _open_rules(record: Mapping) -> None:
         if not any(isinstance(v, str) and v.strip() for v in item.values()):
             raise Rejection(SCHEMA, "each piece of evidence needs at least one non-empty "
                                     "value a verifier can act on")
+        content = item.get("content")
+        if content is not None:
+            if not isinstance(content, str):
+                raise Rejection(SCHEMA, "evidence content must be text")
+            total += len(content.encode("utf-8"))
+            declared = item.get("content_sha256")
+            if declared:
+                import hashlib
+                actual = hashlib.sha256(content.encode("utf-8")).hexdigest()
+                if declared.replace("sha256:", "") != actual:
+                    raise Rejection(
+                        CONTENT_HASH,
+                        f"evidence content_sha256 does not match the content beside it; "
+                        f"the bytes hash to sha256:{actual}")
+    if total > 262144:
+        raise Rejection(SCHEMA, f"inline evidence content totals {total} bytes; the cap "
+                                f"is 262144. Put anything larger somewhere fetchable and "
+                                f"reference it by url and digest.")
     if not evidence and not str(record.get("how_to_check", "")).strip():
         raise Rejection(SCHEMA, "an open claim offers evidence, or says how a stranger "
                                 "could check it, or both. With neither there is nothing "
                                 "for a verifier to do but believe you.")
+
+
+def _research_rules(record: Mapping) -> None:
+    """Research must cite something. Otherwise it is an opinion with a signature."""
+    sources = record.get("sources")
+    if not isinstance(sources, list) or not sources:
+        raise Rejection(SCHEMA, "research cites its sources. Without them this is an "
+                                "opinion with a signature on it, and a stranger has no "
+                                "way to check whether anyone actually reports this "
+                                "problem.")
+    if len(sources) > 64:
+        raise Rejection(SCHEMA, "at most 64 sources")
+    for src in sources:
+        if not isinstance(src, dict) or not src:
+            raise Rejection(SCHEMA, "each source is a non-empty object")
+        if not any(isinstance(v, str) and v.strip() for v in src.values()):
+            raise Rejection(SCHEMA, "each source needs at least one value a stranger "
+                                    "can follow")
+    for field in ("findings", "rejected"):
+        if not isinstance(record.get(field), list):
+            raise Rejection(SCHEMA, f"{field} must be a list")
+        if len(record[field]) > 64:
+            raise Rejection(SCHEMA, f"at most 64 entries in {field}")
+    if not record.get("findings") and not record.get("rejected"):
+        raise Rejection(SCHEMA, "research reports what you found, what you ruled out, "
+                                "or both. What you ruled out is often the more useful "
+                                "half — it tells the next agent where not to look.")
 
 
 def _path_rules(record: Mapping, kind: str, directory: str, path: str) -> None:
@@ -263,6 +316,8 @@ def _path_rules(record: Mapping, kind: str, directory: str, path: str) -> None:
         want = record["claim_id"].replace("sha256:", "") + "-" + record["verifier"]
     elif kind == "seal":
         want = record["seal_id"].replace("sha256:", "")
+    elif kind == "research":
+        want = record["research_id"].replace("sha256:", "")
     else:
         want = record["pseudonym"]
     if stem != want:
@@ -277,4 +332,6 @@ def path_for(record: Mapping, kind: str) -> str:
         return f"{directory}/{record['claim_id'].replace('sha256:', '')}-{record['verifier']}.json"
     if kind == "seal":
         return f"{directory}/{record['seal_id'].replace('sha256:', '')}.json"
+    if kind == "research":
+        return f"{directory}/{record['research_id'].replace('sha256:', '')}.json"
     return f"{directory}/{record['pseudonym']}.json"

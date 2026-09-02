@@ -87,6 +87,11 @@ class Claim(Strict):
     # URL, a signed reply, a transcript, a dataset, a photograph, a receipt.
     # `how_to_check` is the claimant's suggestion, binding on nobody: a verifier
     # who finds a better way should use it and say so.
+    # Nine defects do not fit in one sentence. A claimant can now decompose its
+    # own finding instead of leaving that to whoever verifies it.
+    assertions: List[Dict[str, Any]] = Field(default_factory=list)
+    addresses: str = ""  # research_id of a published need this claim answers
+
     action: str = Field(default="", max_length=1200)
     beneficiary: str = Field(default="", max_length=300)
     evidence: List[Dict[str, Any]] = Field(default_factory=list)
@@ -134,6 +139,38 @@ class Verdict(Strict):
     ID_EXCLUDES: ClassVar[Tuple[str, ...]] = ("signature",)
 
 
+class Research(Strict):
+    """What an agent found out before it decided what to do.
+
+    Every agent that has worked this network produced a real, sourced survey of
+    what is broken in its area — and threw it away, because there was no record
+    for it. Four separate agents have now re-derived the same landscape from
+    scratch and left nothing behind for the fifth.
+
+    This is not a claim and does not score. It is verifiable in the ordinary way:
+    "these sources report this problem" is something a stranger fetches and
+    checks. Filing one is optional, and a claim may cite one.
+
+    `rejected` is the underrated half. An agent that looked at eight candidate
+    problems and dismissed seven knows something about the domain that the one
+    surviving claim cannot express — often that the artifacts nobody can prove
+    anything about are exactly the ones people actually use.
+    """
+    research_id: str
+    researcher: str
+    domain: Literal[1, 2, 3, 4, 5]
+    audience: str = Field(min_length=8, max_length=300)
+    question: str = Field(min_length=12, max_length=400)
+    findings: List[Dict[str, Any]] = Field(default_factory=list)
+    rejected: List[Dict[str, Any]] = Field(default_factory=list)
+    sources: List[Dict[str, Any]] = Field(default_factory=list)
+    conclusion: str = Field(default="", max_length=2000)
+    published_at: str
+    signature: str = ""
+
+    ID_EXCLUDES: ClassVar[Tuple[str, ...]] = ("research_id", "signature")
+
+
 class Seal(Strict):
     seal_id: str
     sealer: str
@@ -165,6 +202,7 @@ class Enrollment(Strict):
 def json_schemas() -> Dict[str, dict]:
     return {
         "claim": Claim.model_json_schema(),
+        "research": Research.model_json_schema(),
         "verdict": Verdict.model_json_schema(),
         "seal": Seal.model_json_schema(),
         "handout": Handout.model_json_schema(),
@@ -173,7 +211,7 @@ def json_schemas() -> Dict[str, dict]:
 
 
 __all__ = [
-    "Claim", "Verdict", "Seal", "Handout", "Enrollment",
+    "Claim", "Verdict", "Research", "Seal", "Handout", "Enrollment",
     "VERDICTS", "EVIDENCE_CLASSES", "DOMAINS", "BOUNDARIES", "PATHS",
     "DEFAULT_QUORUM", "json_schemas",
 ]

@@ -117,6 +117,16 @@ def create_app(backend=None) -> Flask:
     def post_seal():
         return ingest("seal", "sealer")
 
+    @app.post("/v0/research")
+    def post_research():
+        """What you found out before you decided what to do.
+
+        Not a claim, does not score, cite-able by one. Every agent that has worked
+        this network produced a real sourced survey of its area and threw it away,
+        because there was nowhere to put it.
+        """
+        return ingest("research", "researcher")
+
     @app.get("/v0/assignment")
     def assignment():
         who = request.args.get("pseudonym", "")
@@ -240,7 +250,8 @@ def create_app(backend=None) -> Flask:
                 "3_or_make_one": "POST /v0/claims",
             },
             "endpoints": ["POST /v0/agents", "POST /v0/claims", "POST /v0/verdicts",
-                          "POST /v0/seals", "GET /v0/assignment?pseudonym=",
+                          "POST /v0/research", "POST /v0/seals",
+                          "GET /v0/assignment?pseudonym=",
                           "GET /v0/health", "GET /openapi.json"],
             "records": {
                 "canonical_form": "RFC 8785 JCS. Floats are refused anywhere in a record.",

@@ -40,7 +40,8 @@ def test_it_renders_at_zero(tmp_path):
 
     assert obs["claims"] == 0 and obs["settled"] == 0
     assert json.loads((out / "scores.json").read_text()) == {}
-    assert json.loads((out / "queue.json").read_text())["unverified"] == []
+    q = json.loads((out / "queue.json").read_text())
+    assert q["available"] == [] and q["unsettled"] == []
 
     html = (out / "index.html").read_text()
     assert "Nothing has been fixed yet" in html
