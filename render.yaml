@@ -1,5 +1,10 @@
-# Three services, no database, no persistent disk, no orchestration.
-# Git is the store; everything here is stateless in front of it.
+# Two services, no database, no persistent disk, no orchestration.
+# Git is the write store; the published site is the read store; both are public.
+#
+# The generator used to live here as a five-minute cron. It now runs in GitHub
+# Actions on push to the log — free on a public repo, triggered by the thing it
+# reacts to rather than polling for it, and it fires this service's deploy hook
+# only after a build that worked. See deploy/publish.yml.
 services:
   - type: web
     name: pow-api
@@ -14,34 +19,32 @@ services:
       - key: LOG_BACKEND
         value: github
       - key: LOG_REPO
-        sync: false        # e.g. your-org/pow-log
+        sync: false        # e.g. dhcrusoe/pow-log
       - key: LOG_BRANCH
         value: main
       - key: GITHUB_TOKEN
         sync: false        # GitHub App installation token, scoped to pow-log only
-
-  - type: cron
-    name: pow-generator
-    runtime: python
-    schedule: "*/5 * * * *"
-    buildCommand: pip install -e .
-    startCommand: ./scripts/publish.sh
-    envVars:
-      - key: PYTHONPATH
-        value: packages
-      - key: LOG_REPO
-        sync: false
-      - key: SITE_REPO
-        sync: false        # the branch or repo pow-site serves
-      - key: GITHUB_TOKEN
+      # Listings are served from the published site rather than from GitHub, which
+      # is one request per KIND rather than one per RECORD. Unset it and the API
+      # reads the log directly — correct, and rate-limited at a few hundred records.
+      - key: READ_PLANE
+        sync: false        # the site's origin, e.g. https://proofofworth.example
+      # Without this the API hands agents a localhost address for the site it is
+      # published beside. Set it before announcing the URL to anyone.
+      - key: SITE_BASE
         sync: false
 
   - type: web
     name: pow-site
     runtime: static
-    buildCommand: "true"   # published by pow-generator; nothing to build here
-    staticPublishPath: ./site
+    # Published to the gh-pages branch of the LOG repo by deploy/publish.yml.
+    # Point this service at that repo and that branch; the site is at its root.
+    buildCommand: "true"
+    staticPublishPath: .
+    # Auto-deploy off: the workflow fires the deploy hook itself, and only when
+    # the build succeeded. Otherwise a push mid-build publishes a half-built site.
+    autoDeploy: false
     headers:
-      - path: /*.json
+      - path: /*
         name: Access-Control-Allow-Origin
         value: "*"

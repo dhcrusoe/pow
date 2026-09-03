@@ -16,8 +16,9 @@ import base64
 import json
 import os
 import subprocess
+import time
 from pathlib import Path
-from typing import List, Optional, Protocol
+from typing import Dict, List, Optional, Protocol
 
 import httpx
 
@@ -123,3 +124,61 @@ def from_env() -> Backend:
         repo, token = os.environ["LOG_REPO"], os.environ["GITHUB_TOKEN"]
         return GitHubBackend(repo, token, os.environ.get("LOG_BRANCH", "main"))
     return LocalBackend(Path(os.environ.get("LOG_PATH", "./tmp/pow-log")))
+
+
+def read_plane_from_env(log: Backend):
+    """The read model, if one is published. Local development has none and does
+    not need one: a filesystem read costs nothing."""
+    base = os.environ.get("READ_PLANE", "").strip()
+    return ReadPlane(base, log) if base else None
+
+
+class ReadPlane:
+    """Reads from the published site instead of from the log.
+
+    The log is the write model and the generated site is the read model — the
+    split the architecture already implied, made explicit. Reading records back
+    out of GitHub cost one HTTP request per record, so a single GET /v0/claims at
+    a few hundred records could exhaust an hour's rate limit. The generator
+    already visits every record; it now writes them out in one file per kind, and
+    this reads that.
+
+    It is a cache, and it is never authoritative. Where this and the log
+    disagree, this is wrong — so anything that must be correct rather than fast
+    keeps reading the log directly, and /v0/health publishes how far behind this
+    is rather than pretending it is not.
+    """
+
+    TTL = 20.0
+
+    def __init__(self, base: str, fallback: Backend) -> None:
+        self.base = base.rstrip("/")
+        self.fallback = fallback
+        self.client = httpx.Client(timeout=10.0, follow_redirects=True)
+        self._cache: Dict[str, tuple] = {}
+        self.head = ""
+        self.generated_from = ""
+        self.degraded = ""
+
+    def read_dir(self, name: str) -> List[dict]:
+        hit = self._cache.get(name)
+        if hit and time.monotonic() - hit[0] < self.TTL:
+            return hit[1]
+        try:
+            r = self.client.get(f"{self.base}/records/{name}.json")
+            r.raise_for_status()
+            doc = r.json()
+            rows = doc.get(name, [])
+            self.head = doc.get("head_commit", "")
+            self.generated_from = doc.get("generated_from", "")
+            self.degraded = ""
+        except (httpx.HTTPError, ValueError) as exc:
+            # A broken build must not freeze reads at whatever was last good.
+            # Fall through to the log and say so, loudly, in health.
+            self.degraded = f"{type(exc).__name__} reading the read plane"
+            return self.fallback.read_dir(name)
+        self._cache[name] = (time.monotonic(), rows)
+        return rows
+
+    def put(self, path: str, content: bytes, message: str) -> str:
+        raise RuntimeError("the read plane is read-only; writes go to the log")

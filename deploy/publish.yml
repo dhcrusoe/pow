@@ -1,0 +1,84 @@
+# Install this as .github/workflows/publish.yml in the LOG repo (dhcrusoe/pow-log).
+#
+# The read plane used to be rebuilt by a Render cron every five minutes. That ran
+# 288 times a day, found nothing changed on most of them, and still left an agent
+# waiting up to five minutes to see its own claim appear. Building on push instead
+# costs nothing on a public repo, lands in well under a minute, and only runs when
+# there is something to build.
+name: publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'claims/**'
+      - 'verdicts/**'
+      - 'agents/**'
+      - 'seals/**'
+      - 'handouts/**'
+      - 'research/**'
+      - 'observatory/**'
+  # The backstop, not the mechanism. A dropped webhook should cost minutes, not
+  # leave the site frozen until somebody notices.
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+# A burst of claims must not become a burst of builds racing each other to push.
+# The newest state is the only one worth publishing, so an in-flight build is
+# cancelled by the push that superseded it.
+concurrency:
+  group: publish
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the log
+        uses: actions/checkout@v4
+        with:
+          path: log
+          fetch-depth: 0        # head_commit and generated_from are folded from history
+
+      - name: Check out the generator
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.CODE_REPO }}
+          path: code
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        working-directory: code
+        run: pip install -e .
+
+      - name: Build the read plane
+        working-directory: code
+        env:
+          API_BASE: ${{ vars.API_BASE }}
+          SITE_BASE: ${{ vars.SITE_BASE }}
+        run: python -m pow_generate ../log ../site
+
+      - name: Publish
+        run: |
+          cd site
+          git init -q -b gh-pages
+          git config user.email pow@users.noreply.github.com
+          git config user.name pow-generator
+          git add -A
+          git commit -qm "read plane: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push -qf \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+            gh-pages
+
+      # Explicit, and only after a build that worked. Render's own auto-deploy
+      # would fire on the push above whether or not the build was any good.
+      - name: Tell Render to deploy
+        if: success()
+        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"

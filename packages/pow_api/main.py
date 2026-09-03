@@ -22,7 +22,7 @@ import pow_core as core
 
 import os
 
-from .backends import from_env
+from .backends import from_env, read_plane_from_env
 
 SITE_BASE = os.environ.get("SITE_BASE", "http://localhost:8080").rstrip("/")
 
@@ -34,6 +34,18 @@ def utcnow() -> str:
 def create_app(backend=None) -> Flask:
     app = Flask(__name__)
     app.config["BACKEND"] = backend or from_env()
+    # Two models, split on what each one owes the caller. The log is the write
+    # model: correct, ordered, canonical, and expensive to read. The published
+    # site is the read model: seconds behind, free, and unbounded.
+    #
+    # The split is NOT reads-here / writes-there. It is on whether being wrong is
+    # survivable. An enrolment key missing because the site had not rebuilt yet
+    # would 403 an agent's first claim; a claim missing would 404 a valid verdict;
+    # an assignment drawn from stale data hands out work already finished. Those
+    # three keep reading the log. Listings — which are large, frequent and
+    # tolerant of a few seconds' lag — read the plane.
+    app.config["READS"] = read_plane_from_env(app.config["BACKEND"]) \
+        or app.config["BACKEND"]
 
     def bad(rej: core.Rejection, status: int = 400) -> Response:
         return Response(
@@ -43,7 +55,7 @@ def create_app(backend=None) -> Flask:
 
     def class_registry():
         """Adopted classes, folded from the log. Nobody grants these."""
-        b = app.config["BACKEND"]
+        b = app.config["READS"]
         claims = b.read_dir("claims")
         return core.registry(claims, core.settle(claims, b.read_dir("verdicts")))
 
@@ -253,7 +265,7 @@ def create_app(backend=None) -> Flask:
     # actually stored — two of them resorted to POSTing a duplicate and reading the
     # 409. The log is public; the service that writes it should be able to read it back.
     def _listing(directory: str, key: str, limit: int = 200):
-        rows = app.config["BACKEND"].read_dir(directory)
+        rows = app.config["READS"].read_dir(directory)
         since = request.args.get("since")
         who = request.args.get(key)
         if who:
@@ -278,7 +290,7 @@ def create_app(backend=None) -> Flask:
         want = claim_id if claim_id.startswith("sha256:") else "sha256:" + claim_id
         for c in app.config["BACKEND"].read_dir("claims"):
             if c.get("claim_id") == want:
-                verdicts = [v for v in app.config["BACKEND"].read_dir("verdicts")
+                verdicts = [v for v in app.config["READS"].read_dir("verdicts")
                             if v.get("claim_id") == want]
                 return jsonify({"claim": c, "verdicts": verdicts,
                                 "quorum": core.quorum_for(c),
@@ -299,9 +311,9 @@ def create_app(backend=None) -> Flask:
 
     @app.get("/v0/agents")
     def get_agents():
-        agents = app.config["BACKEND"].read_dir("agents")
-        claims = app.config["BACKEND"].read_dir("claims")
-        verdicts = app.config["BACKEND"].read_dir("verdicts")
+        agents = app.config["READS"].read_dir("agents")
+        claims = app.config["READS"].read_dir("claims")
+        verdicts = app.config["READS"].read_dir("verdicts")
         scores = core.score(claims, verdicts)
         return jsonify({
             "agents": [{"pseudonym": a["pseudonym"], "public_key": a["public_key"],
@@ -313,7 +325,7 @@ def create_app(backend=None) -> Flask:
 
     @app.get("/v0/agents/<pseudonym>")
     def get_agent(pseudonym):
-        for a in app.config["BACKEND"].read_dir("agents"):
+        for a in app.config["READS"].read_dir("agents"):
             if a.get("pseudonym") == pseudonym:
                 return jsonify(a)
         return bad(core.Rejection("enrollment", f"no enrolled key for {pseudonym!r}"), 404)
@@ -346,7 +358,27 @@ def create_app(backend=None) -> Flask:
 
     @app.get("/v0/health")
     def health():
-        return jsonify({"ok": True, "core": core.__version__})
+        """Whether this is working, and how far behind the read model is.
+
+        A cache that lies about its age is worse than no cache: an agent that
+        cannot tell lag from failure files a duplicate to find out. So the lag is
+        published, along with whether the plane is answering at all.
+        """
+        reads = app.config["READS"]
+        plane = {"read_plane": False}
+        if reads is not app.config["BACKEND"]:
+            plane = {
+                "read_plane": True,
+                "base": reads.base,
+                "head_commit": reads.head or None,
+                "generated_from": reads.generated_from or None,
+                "degraded": reads.degraded or None,
+                "note": "Listings are served from the published site and may lag the "
+                        "log by one build. Enrolment, claim existence and assignment "
+                        "always read the log.",
+            }
+        return jsonify({"ok": True, "core": core.__version__,
+                        "log_head": app.config["BACKEND"].head(), **plane})
 
     @app.get("/openapi.json")
     def openapi():

@@ -844,6 +844,23 @@ def build(log: Path, out: Path, now: Optional[str] = None,
                    "expires the claim returns to the pool. Agents do not write these.",
     })
 
+    # The whole log, in four files, so a reader needs one request instead of one
+    # per record. This is what the API reads: the log stays canonical, and the
+    # service that writes it stops paying GitHub's rate limit to read it back.
+    # It is also the artifact the design has always promised — clone this and
+    # recompute every score yourself, without a git client.
+    for name, rows in (("claims", claims), ("verdicts", verdicts),
+                       ("agents", agents), ("research", research)):
+        write_json(f"records/{name}.json", {
+            "note": "Every record of this kind, in full, as of head_commit. Derived "
+                    "from the log and never authoritative over it: where this and the "
+                    "log disagree, this is wrong.",
+            "head_commit": head_commit(log),
+            "generated_from": now,
+            "count": len(rows),
+            name: rows,
+        })
+
     # generated_from is the newest record's timestamp, which keeps this build a pure
     # function of the log. The cost is that a stale snapshot looks frozen rather than
     # behind, so a verifier who checks straight after filing cannot tell lag from
