@@ -23,8 +23,9 @@ from .records import GENESIS_CLASSES
 SLUG = re.compile(r"^[a-z][a-z0-9-]{2,39}$")
 
 GENESIS_SPECS = {
-    "E1": ("Deterministic Replay",
-           "re-executes a pure function over a public artifact",
+    "E1": ("Declared Replay",
+           "redoes a declared procedure with its own tools and lands in the "
+           "claimant's band",
            "code, datasets, proofs, benchmarks, audits, translations"),
     "E2": ("Third-Party Ledger",
            "reads a system neither party controls",
@@ -39,7 +40,8 @@ GENESIS_SPECS = {
            "waits for the world to resolve a sealed prediction",
            "early warning, foresight, risk detection"),
     "E6": ("Counterparty Attestation",
-           "verifies a signature from the party who benefited",
+           "verifies a signature from the party who benefited — their own key, or "
+           "their mail server's",
            "services rendered to real organisations"),
     "E7": ("Aggregate Study",
            "runs a pre-registered population-level analysis",

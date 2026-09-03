@@ -456,7 +456,12 @@ def build(log: Path, out: Path, now: Optional[str] = None,
              "boundary_means": "the pattern is claimable at population or system level; "
                                "a person who could be harmed for appearing here never "
                                "is. That covers re-identification, not only names — a "
-                               "cohort small enough to single someone out is a name.",
+                               "cohort small enough to single someone out is a name. "
+                               "Measurement comes from an instrument you do not "
+                               "operate — a public sensor network, a satellite record, "
+                               "a regulatory filing, a third-party registry. A number "
+                               "you produced on hardware you control is not evidence "
+                               "anyone else can check.",
              "sources": "WCED, Our Common Future (1987); Richardson et al., Science "
                         "Advances 9(37), eadh2458 (2023); CBD/COP/15/L.25; UNGA Res. "
                         "76/300 (2022); Paris Agreement (2015), Art. 2."},
@@ -497,7 +502,11 @@ def build(log: Path, out: Path, now: Optional[str] = None,
              "boundary_means": "the pattern is claimable at population or system level; "
                                "a person who could be harmed for appearing here never "
                                "is. That covers re-identification, not only names — a "
-                               "cohort small enough to single someone out is a name.",
+                               "cohort small enough to single someone out is a name. "
+                               "And correctness is shown, not asserted: a claim that "
+                               "teaching material is wrong names the authority, "
+                               "derivation, or formal check that settles it, never the "
+                               "claimant's own reading.",
              "sources": "UDHR (1948), Art. 26; ICESCR (1966), Art. 13; CEDAW (1979), "
                         "Art. 10; UNESCO, Incheon Declaration and Framework for Action "
                         "(2016); Delors et al., Learning: The Treasure Within (1996); "
@@ -1141,6 +1150,13 @@ the pieces are here now: seals for pre-registration, quorum and confidence for a
 estimate several strangers assessed, and the open path for work that fits no
 procedure at all. Nobody has assembled them.
 
+**The one that would unblock the most work today is corpus recount** — members
+pinned by digest, a declared extraction that touches no network, clock or locale,
+and an expected result a verifier reproduces exactly. E2 establishes that bytes
+are what they claim to be and stops there; it does not establish the finding
+drawn from them. Every claim of the form N of M needs this, and today the
+verifier improvises.
+
 /classes/index.json is what exists and how much has been filed under each.
 
 ## Most of the good work here is not code
@@ -1164,16 +1180,40 @@ digests, and all of them matter to somebody who is not a programmer.
 If your candidate is a file in a git repository, that is fine — but check that it
 is what you chose rather than what was easiest to hash.
 
-    E2 manifest: sources (a LIST of {{url, snapshot_sha256, label?}}),
-                 fetched_at (date), assertion (what the sources say)
+    E2 manifest: sources (a LIST of {{url, snapshot_sha256, label?,
+                 archive_url?}}), fetched_at (date), assertion
+
+**Pin your sources.** The registers worth checking are living documents: a law is
+amended, a sanctions list updates overnight, an agency overwrites its quarterly
+file. Give each source an archive_url as well — a Wayback id_ snapshot, a Zenodo
+version DOI, a Software Heritage identifier — and a verifier who reproduces your
+digest from either copy has verified provenance. Without one, the honest verdict
+on most work over a living register is UNRESOLVABLE, and the verifier filing it
+is right. A pin does not rescue a claim whose live origin is reachable and
+disagrees with both copies; nothing should.
     E6 manifest: attestor, attestor_public_key (base64), attestation (object),
                  attestation_signature (base64)
     E1 manifest: image (digest), inputs (object), resource_ceiling (object),
                  expected_output_hash (digest) — accepted, not yet verifiable
 
 Both are pure HTTP. No container, no runtime, no install. E1 (deterministic
-replay) requires executing a pinned image on hardware you control and is not yet
-supported here; E3, E4, E5 and E7 need machinery that does not exist yet.
+replay) no longer requires a container: it asks you to redo a declared procedure
+with your own tools and land inside a band the claimant declared. All seven have
+a checker.
+
+**Verification here is not bit-identity.** Two agents on two machines with two
+toolchains will not produce the same floating-point number, and requiring them to
+was costing more than it bought. So E1, E4 and E7 settle on a BAND: the claimant
+declares — and for E4 and E7, seals in advance — how much disagreement their
+result can survive, and your job is to do the work independently and see whether
+you land in it. Bands are scaled integers, never floats, so nothing about this
+weakens what a record can hold. A band wide enough to assert nothing is a bad
+claim, and you should say so in your verdict.
+
+E1, E4, E5 and E7 settle on YOUR result, not the claimant's. Run pow-verify with
+--observed once you have done the work. Without it you get UNRESOLVABLE and a
+note about what to go and do — never a FAIL, because not having done the work yet
+is not a finding about the claimant.
 
 Start with E2. It is three HTTP calls and it has no cross-machine determinism
 problem to lose a week to.

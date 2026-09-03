@@ -168,6 +168,18 @@ def _claim_rules(record: Mapping, classes: Optional[Mapping] = None) -> None:
                 f"A verifier would spend real compute on this before discovering it "
                 f"cannot be run.",
             )
+    # Optional fields let a manifest carry half of each E6 shape and neither
+    # whole. One of them has to be complete or there is no signature to check.
+    if ec == "E6":
+        signed = manifest.get("attestor_public_key") and manifest.get("attestation_signature")
+        mailed = manifest.get("message_raw") and manifest.get("attestor_domain")
+        if not signed and not mailed:
+            raise Rejection(
+                SCHEMA,
+                "E6 needs one complete attestation shape: either attestor_public_key "
+                "with attestation_signature, or message_raw with attestor_domain — a "
+                "reply the counterparty's own mail server signed. Half of each is "
+                "neither, and nothing in it can be checked by a stranger.")
 
 
 SHA256 = re.compile(r"^(sha256:)?[0-9a-f]{64}$")
@@ -196,20 +208,72 @@ def _obj(v):
 
 
 def _sources(v):
-    """A list of {url, snapshot_sha256}. One entry, or many to compare them."""
+    """A list of {url, snapshot_sha256}. One entry, or many to compare them.
+
+    An entry may also carry archive_url: a permanent copy at a third-party
+    archive. Registers that matter are living documents, and an origin that has
+    moved on since the snapshot would otherwise settle UNRESOLVABLE by drift.
+    """
     if not isinstance(v, list) or not v or len(v) > 12:
         return False
     for entry in v:
         if not isinstance(entry, dict):
             return False
-        if set(entry) - {"url", "snapshot_sha256", "label"}:
+        if set(entry) - {"url", "snapshot_sha256", "label", "archive_url"}:
             return False
         if not _url(entry.get("url")) or not _digest(entry.get("snapshot_sha256")):
             return False
         if "label" in entry and not isinstance(entry["label"], str):
             return False
+        if "archive_url" in entry and not _url(entry["archive_url"]):
+            return False
     urls = [e["url"] for e in v]
     return len(urls) == len(set(urls))
+
+
+def _int(v):
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _interval(v):
+    """A sealed estimate and the band it is allowed to land in.
+
+    Scaled integers, never floats: value * 10**scale is the number, and lo/hi are
+    at the same scale. Verification stopped requiring bit-identity, so this is the
+    surface a stranger has to agree with — a range, not a last decimal place.
+
+    The band is refused if it is degenerate (lo == hi asks for exactness through
+    the back door) or inverted. A band wide enough to assert nothing is NOT
+    refused here: how wide is too wide depends on the claim, and that judgement
+    belongs to a verifier who can see what is being estimated.
+    """
+    if not isinstance(v, dict):
+        return False
+    if set(v) - {"value", "scale", "unit", "lo", "hi"}:
+        return False
+    if not all(_int(v.get(k)) for k in ("value", "scale", "lo", "hi")):
+        return False
+    if not isinstance(v.get("unit"), str) or not v["unit"].strip():
+        return False
+    return v["lo"] < v["hi"] and v["lo"] <= v["value"] <= v["hi"]
+
+
+def _expected(v):
+    """Either an exact artifact digest, or a band a number must land in."""
+    if not isinstance(v, dict) or not v:
+        return False
+    if set(v) == {"digest"}:
+        return _digest(v["digest"])
+    return _interval(v)
+
+
+def _hexsalt(v):
+    return isinstance(v, str) and len(v) >= 32 and bool(re.fullmatch(r"[0-9a-fA-F]+", v))
+
+
+def _rawmail(v):
+    """A whole RFC 5322 message, headers and body, exactly as it arrived."""
+    return isinstance(v, str) and "DKIM-Signature" in v and "\n" in v
 
 
 def _key32(v):
@@ -225,11 +289,61 @@ def _sig(v):
 # container run before settling UNRESOLVABLE. Cheap shape checks at ingest stop
 # a whole class of garbage from ever reaching someone else's compute.
 MANIFEST_RULES = {
+    # E1 used to require a container image digest and a resource ceiling, on the
+    # theory that two machines only agree if they are the same machine. That is
+    # true of bytes and false of findings, and it made the network's flagship
+    # class unusable: nobody will pull a stranger's multi-gigabyte image to earn
+    # three points. A declared procedure plus a band the verifier must land in
+    # asks for the thing that actually matters — that two strangers working
+    # independently reach the same answer — and asks for nothing else.
     "E1": (
-        ("image", _digest, "an image digest, e.g. sha256:<64 hex>"),
-        ("inputs", _obj, "a non-empty object mapping names to content addresses"),
-        ("resource_ceiling", _obj, "an object, e.g. {\"cpu_seconds\": 600, \"memory_mib\": 2048}"),
-        ("expected_output_hash", _digest, "sha256:<64 hex>"),
+        ("procedure", _text,
+         "what to do, stated so a stranger can do it with their own tools"),
+        ("inputs", _sources,
+         "a list of {url, snapshot_sha256} — the exact bytes you worked from"),
+        ("expected", _expected,
+         "either {\"digest\": sha256:<64 hex>} for an artifact that must match "
+         "exactly, or a band {value, scale, unit, lo, hi} for a number"),
+    ),
+    "E3": (
+        ("partner", _text, "the organisation whose endpoint answers"),
+        ("partner_public_key", _key32, "their base64 ed25519 public key, 44 chars"),
+        ("endpoint", _url, "an https URL that signs what it returns"),
+        ("metric", _text, "the name of the metric being challenged"),
+        ("claimed", _interval, "the value you claim, and the band a fresh challenge "
+                               "must land in"),
+        ("fetched_at", _date, "YYYY-MM-DD or RFC3339 UTC"),
+    ),
+    "E4": (
+        ("seal_url", _url, "where the seal you are opening is published"),
+        ("plan_salt", _hexsalt, "at least 32 hex characters"),
+        ("plan", _obj, "the plan you sealed, revealed in full"),
+        ("inputs", _sources, "a list of {url, snapshot_sha256} — what to work from"),
+        ("threshold", _interval,
+         "the band you sealed BEFORE starting; a reproduction lands in it or does not"),
+        ("result", _interval, "what you got"),
+    ),
+    "E5": (
+        ("seal_url", _url, "where the sealed prediction is published"),
+        ("plan_salt", _hexsalt, "at least 32 hex characters"),
+        ("prediction", _obj, "the prediction you sealed, revealed in full"),
+        ("resolves_on", _date, "the date the world answers — not before"),
+        ("resolution", _sources,
+         "a list of {url, snapshot_sha256} — where the answer is read, in a system "
+         "neither you nor your verifier controls"),
+        ("outcome", _text, "what happened, in the prediction's own terms"),
+    ),
+    "E7": (
+        ("seal_url", _url, "where the pre-registration is published"),
+        ("plan_salt", _hexsalt, "at least 32 hex characters"),
+        ("plan", _obj, "the analysis plan you sealed, revealed in full"),
+        ("data_sources", _sources,
+         "a list of {url, snapshot_sha256} — every input, pinned"),
+        ("population", _text, "who or what this is an estimate about"),
+        ("estimate", _interval, "the estimate and the band you sealed for it"),
+        ("refuses", _text,
+         "what this estimate does NOT establish, in your own words. A manifest "
+         "with nothing here is overclaiming by omission"),
     ),
     # E2 originally took one source and one digest, which quietly restricted the
     # network to single byte-stable files — overwhelmingly things in git repos.
@@ -240,19 +354,37 @@ MANIFEST_RULES = {
     "E2": (
         ("sources", _sources,
          "a list of {url, snapshot_sha256} — one entry for a single artifact, "
-         "two or more to assert something about how they compare"),
+         "two or more to assert something about how they compare; each entry "
+         "may add archive_url, a permanent copy the digest also reproduces"),
         ("fetched_at", _date, "YYYY-MM-DD or RFC3339 UTC — when you took the snapshots"),
         ("assertion", _text, "what the sources say, in at least eight characters"),
     ),
+    # E6 takes two shapes now, because asking a hospital to generate an ed25519
+    # keypair is asking it not to answer. The second shape is a reply to an email
+    # the network sent, verified through DKIM — a signature the counterparty's own
+    # mail server already applies to everything it sends, over a key it already
+    # publishes in DNS. Same property as the first shape: a stranger checks the
+    # signature themselves, months later, from bytes in the log.
     "E6": (
-        ("attestor", _text, "who signed the attestation"),
-        ("attestor_public_key", _key32, "base64 ed25519 public key, 44 chars"),
+        ("attestor", _text, "who is attesting"),
         ("attestation", _obj, "a non-empty object — what they are attesting to"),
-        ("attestation_signature", _sig, "base64 ed25519 signature over the attestation"),
+        ("attestor_public_key", _key32, "base64 ed25519 public key, 44 chars", False),
+        ("attestation_signature", _sig, "base64 ed25519 signature", False),
+        ("attestor_domain", _text, "the domain that signed the reply, e.g. charity.org",
+         False),
+        ("message_raw", _rawmail,
+         "the reply exactly as it arrived, headers and body, DKIM-Signature intact",
+         False),
+        ("message_sha256", _digest, "sha256 of message_raw as stored", False),
     ),
 }
 
-REQUIRED_MANIFEST = {k: tuple(f for f, _, _ in v) for k, v in MANIFEST_RULES.items()}
+# Rules are 3-tuples when the field is required and 4-tuples when it is not, so
+# this reports what a manifest must carry, not everything it may.
+REQUIRED_MANIFEST = {
+    k: tuple(r[0] for r in v if len(r) == 3 or r[3])
+    for k, v in MANIFEST_RULES.items()
+}
 
 # The declarative vocabulary a proposed class uses to state its manifest. This is
 # what lets an eighth class arrive without anybody shipping code: the proposal

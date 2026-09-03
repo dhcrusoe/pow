@@ -11,6 +11,14 @@ other, a calculator that disagrees with the statute it implements, a translation
 that drops a clause its original has, two registries that disagree about one
 entity. Verification is the same either way: fetch each, hash each, compare.
 
+An entry may also carry archive_url — a permanent copy at a third-party archive.
+The registers worth checking are living documents: a law is amended, a sanctions
+list updates hourly, an agency overwrites its quarterly file. Under bytes-at-the-
+origin alone, the correct verdict on most good work here is UNRESOLVABLE by drift,
+and the verifier filing it would be right. So provenance is satisfied by either
+copy: the origin, or the pin. What the pin cannot do is rescue a claim whose
+origin is reachable and disagrees with both.
+
 The three-way distinction is the whole judgement, so it is explicit:
 
   PASS          every source still says what the claimant recorded
@@ -41,6 +49,17 @@ def _normalise(manifest: dict) -> List[dict]:
     return []
 
 
+def _fetch(url: str) -> Tuple[str, str]:
+    """Return (sha256_hex, "") or ("", reason)."""
+    try:
+        r = httpx.get(url, timeout=TIMEOUT, follow_redirects=True)
+    except httpx.HTTPError as exc:
+        return "", f"not fetchable ({type(exc).__name__})"
+    if r.status_code >= 400:
+        return "", f"HTTP {r.status_code}"
+    return hashlib.sha256(r.content).hexdigest(), ""
+
+
 def check(manifest: dict) -> Tuple[str, str, str]:
     """Return (verdict, output_hash, diagnosis)."""
     sources = _normalise(manifest)
@@ -53,22 +72,35 @@ def check(manifest: dict) -> Tuple[str, str, str]:
 
     for entry in sources:
         url = entry.get("url", "")
+        pin = entry.get("archive_url", "")
         expected = str(entry.get("snapshot_sha256", "")).replace("sha256:", "")
         label = entry.get("label") or url
-        try:
-            r = httpx.get(url, timeout=TIMEOUT, follow_redirects=True)
-        except httpx.HTTPError as exc:
-            unreadable.append(f"{label}: not fetchable ({type(exc).__name__})")
+
+        got, why = _fetch(url)
+        if got == expected and got:
+            digests.append(got)
+            matched.append(f"{label}: identical")
             continue
-        if r.status_code >= 400:
-            unreadable.append(f"{label}: HTTP {r.status_code}")
+
+        # The origin either moved on or could not be read. Try the pin before
+        # charging anyone: it exists precisely for this.
+        pinned, pin_why = _fetch(pin) if pin else ("", "no archive_url given")
+        if pinned == expected and pinned:
+            digests.append(pinned)
+            matched.append(
+                f"{label}: origin {'changed' if got else 'unreadable'}, "
+                f"digest reproduced from the pin")
             continue
-        got = hashlib.sha256(r.content).hexdigest()
-        digests.append(got)
-        (matched if got == expected else changed).append(
-            f"{label}: expected sha256:{expected[:12]}…, observed sha256:{got[:12]}…"
-            if got != expected else f"{label}: identical"
-        )
+
+        if got:
+            digests.append(got)
+            changed.append(
+                f"{label}: expected sha256:{expected[:12]}…, observed "
+                f"sha256:{got[:12]}… at the origin" +
+                (f", and the pin did not match either ({pin_why or 'differs'})"
+                 if pin else ", and no archive_url was given"))
+        else:
+            unreadable.append(f"{label}: {why}; pin: {pin_why or 'differs'}")
 
     # A source we could not read says nothing about the claimant. Report it as an
     # environment problem and let them resubmit, rather than charging them 15.
@@ -92,6 +124,12 @@ def check(manifest: dict) -> Tuple[str, str, str]:
     note = ("" if len(sources) == 1 else
             " The comparison the claimant asserts is between these bytes; a stranger "
             "re-runs it from the snapshots alone.")
+    # Say so when provenance came from an archive rather than the origin. A
+    # reader of the log should never have to guess which copy was checked.
+    pinned = [m for m in matched if "from the pin" in m]
+    via = ("" if not pinned else
+           f" {len(pinned)} of {len(sources)} verified from the pin rather than the "
+           f"origin: " + "; ".join(pinned) + ".")
     return ("PASS", combined,
             f"re-fetched {len(sources)} {plural}; all bytes identical to the snapshots "
-            f"recorded on {manifest.get('fetched_at', 'the stated date')}.{note}")
+            f"recorded on {manifest.get('fetched_at', 'the stated date')}.{note}{via}")

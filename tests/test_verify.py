@@ -142,3 +142,137 @@ def test_verdicts_emitted_by_the_checkers_pass_validation(monkeypatch, keys):
     rec["signature"] = core.sign(rec, keys["slate"]["private"])
     core.validate(core.canonicalize(rec), "verdict",
                   public_key=keys["slate"]["public"], path=core.path_for(rec, "verdict"))
+
+
+# The pin exists because the registers worth checking are living documents. If a
+# verifier only accepts bytes at the origin, then a law that was amended, a
+# sanctions list that updated overnight, and an agency that overwrote its
+# quarterly file all settle UNRESOLVABLE — the claimant is charged nothing, and
+# also proves nothing. These pin the fallback so it cannot quietly stop working.
+
+PIN = "https://web.archive.org/web/2026id_/https://example.invalid/x.json"
+
+
+def patch_pair(monkeypatch, *, origin, pin):
+    """Serve different bytes (or a status int) at the origin and at the pin."""
+    def fake_get(url, **kw):
+        chosen = pin if url == PIN else origin
+        if isinstance(chosen, int):
+            return httpx.Response(chosen, request=httpx.Request("GET", url))
+        return httpx.Response(200, content=chosen, request=httpx.Request("GET", url))
+    monkeypatch.setattr(httpx, "get", fake_get)
+
+
+def pinned():
+    return manifest(sources=[{"url": "https://example.invalid/x.json",
+                              "archive_url": PIN, "snapshot_sha256": DIGEST}])
+
+
+def test_a_pin_rescues_a_source_whose_origin_has_moved_on(monkeypatch):
+    patch_pair(monkeypatch, origin=b"amended since", pin=BODY)
+    verdict, _, diag = e2.check(pinned())
+    assert verdict == "PASS"
+    assert "pin" in diag
+
+
+def test_a_pin_rescues_a_source_that_has_vanished(monkeypatch):
+    patch_pair(monkeypatch, origin=404, pin=BODY)
+    assert e2.check(pinned())[0] == "PASS"
+
+
+def test_a_pin_cannot_rescue_a_claim_the_live_origin_contradicts(monkeypatch):
+    patch_pair(monkeypatch, origin=b"something else", pin=b"also something else")
+    verdict, _, diag = e2.check(pinned())
+    assert verdict == "FAIL"
+    assert "pin did not match" in diag
+
+
+def test_an_unreadable_origin_and_an_unreadable_pin_stay_unresolvable(monkeypatch):
+    """Two dead links are still an environment problem, never the claimant's fault."""
+    patch_pair(monkeypatch, origin=404, pin=503)
+    verdict, _, diag = e2.check(pinned())
+    assert verdict == "UNRESOLVABLE"
+    assert "Nothing is owed by the claimant" in diag
+
+
+def test_a_pin_is_optional_and_a_malformed_one_is_refused_at_the_door():
+    from pow_core.validate import _sources
+    assert _sources([{"url": "https://example.invalid/x.json",
+                      "snapshot_sha256": DIGEST, "archive_url": PIN}])
+    assert _sources([{"url": "https://example.invalid/x.json",
+                      "snapshot_sha256": DIGEST}])
+    assert not _sources([{"url": "https://example.invalid/x.json",
+                          "snapshot_sha256": DIGEST, "archive_url": "not-a-url"}])
+
+
+# E6 grew a second shape because the first one asked an NGO to generate an ed25519
+# keypair, which is a way of asking them not to reply. A DKIM-signed email is a
+# signature the counterparty's own mail server already applies, over a key their
+# domain already publishes — same checkable property, no onboarding.
+
+import dkim as dkimlib
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+
+MAIL = ("From: programs@charity.invalid\r\n"
+        "To: attest@proof-of-worth.invalid\r\n"
+        "Subject: Re: did you see this change?\r\n"
+        "\r\n"
+        "Yes. The correction landed on our site last week.\r\n"
+        "claim_id: sha256:" + "a" * 64 + "\r\n")
+
+
+@pytest.fixture(scope="module")
+def signed_mail():
+    """Sign a message the way a real mail server would, and serve its key."""
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pem = key.private_bytes(serialization.Encoding.PEM,
+                            serialization.PrivateFormat.TraditionalOpenSSL,
+                            serialization.NoEncryption())
+    pub = key.public_key().public_bytes(
+        serialization.Encoding.DER,
+        serialization.PublicFormat.SubjectPublicKeyInfo)
+    import base64
+    record = b"v=DKIM1; k=rsa; p=" + base64.b64encode(pub)
+    sig = dkimlib.sign(MAIL.encode(), b"sel", b"charity.invalid", pem)
+    return (sig + MAIL.encode()).decode(), lambda name, timeout=5: record
+
+
+def test_e6_accepts_a_reply_the_counterpartys_own_mail_server_signed(signed_mail):
+    raw, dns = signed_mail
+    m = {"attestor": "Charity Programs", "attestation": {"saw_the_change": True},
+         "attestor_domain": "charity.invalid", "message_raw": raw,
+         "message_sha256": hashlib.sha256(raw.encode()).hexdigest()}
+    verdict, out, diag = e6.check(m, dnsfunc=dns)
+    assert verdict == "PASS"
+    assert "charity.invalid" in diag and out.startswith("sha256:")
+
+
+def test_e6_refuses_a_reply_whose_stored_bytes_were_edited(signed_mail):
+    """The bytes a verifier checks must be the bytes that were signed."""
+    raw, dns = signed_mail
+    m = {"attestor": "Charity Programs", "attestation": {"saw_the_change": True},
+         "attestor_domain": "charity.invalid", "message_raw": raw,
+         "message_sha256": "b" * 64}
+    assert e6.check(m, dnsfunc=dns)[0] == "FAIL"
+
+
+def test_e6_refuses_a_real_signature_from_the_wrong_party(signed_mail):
+    raw, dns = signed_mail
+    m = {"attestor": "Someone Else", "attestation": {"saw_the_change": True},
+         "attestor_domain": "notcharity.invalid", "message_raw": raw,
+         "message_sha256": hashlib.sha256(raw.encode()).hexdigest()}
+    verdict, _, diag = e6.check(m, dnsfunc=dns)
+    assert verdict == "FAIL" and "wrong party" in diag
+
+
+def test_a_rotated_key_is_unresolvable_not_a_forgery(signed_mail):
+    """A rotated selector and a forgery look identical from here, and only one of
+    them is the claimant's fault."""
+    raw, _ = signed_mail
+    m = {"attestor": "Charity Programs", "attestation": {"saw_the_change": True},
+         "attestor_domain": "charity.invalid", "message_raw": raw,
+         "message_sha256": hashlib.sha256(raw.encode()).hexdigest()}
+    verdict, _, diag = e6.check(m, dnsfunc=lambda name, timeout=5: b"")
+    assert verdict == "UNRESOLVABLE" and "rotated selector" in diag
+
