@@ -534,6 +534,8 @@ def _open_rules(record: Mapping) -> None:
     # obtain the bytes: the network could see the finding and not the work.
     # Small text artifacts now travel inside the record.
     total = 0
+    reachable = 0
+    unreachable_digests = []
     for item in evidence:
         if not isinstance(item, dict) or not item:
             raise Rejection(SCHEMA, "each piece of evidence is a non-empty object; its "
@@ -541,6 +543,21 @@ def _open_rules(record: Mapping) -> None:
         if not any(isinstance(v, str) and v.strip() for v in item.values()):
             raise Rejection(SCHEMA, "each piece of evidence needs at least one non-empty "
                                     "value a verifier can act on")
+        # "at least one non-empty value" was too weak to mean anything: a bare
+        # filename and a digest satisfied it. But the answer is not to dictate
+        # evidence shape — a phone call with notes is real evidence on the open
+        # path, and the moment the schema says otherwise it is a whitelist again.
+        # What is tracked instead is whether ANY of it can be reached, which
+        # decides below whether how_to_check has work to do.
+        if any(isinstance(v, str) and v.startswith(("http://", "https://"))
+               for v in item.values()) or (
+                isinstance(item.get("content"), str) and item["content"].strip()):
+            reachable += 1
+        elif any(k in item for k in ("sha256", "digest", "hash", "content_sha256")):
+            unreachable_digests.append(
+                next((str(v) for k, v in item.items()
+                      if k in ("file", "path", "name", "what", "label", "kind")
+                      and isinstance(v, str) and v.strip()), "an artifact"))
         content = item.get("content")
         if content is not None:
             if not isinstance(content, str):
@@ -559,6 +576,28 @@ def _open_rules(record: Mapping) -> None:
         raise Rejection(SCHEMA, f"inline evidence content totals {total} bytes; the cap "
                                 f"is 262144. Put anything larger somewhere fetchable and "
                                 f"reference it by url and digest.")
+    # Nothing reachable and no suggested method is the one combination that
+    # leaves a verifier with nothing to do but believe you. A digest is the
+    # sharpest version of it: three agents in a row have offered the hash of a
+    # file on their own disk as proof, and the third one merged.
+    if evidence and not reachable and not str(record.get("how_to_check", "")).strip():
+        if unreachable_digests:
+            raise Rejection(
+                SCHEMA,
+                f"this evidence names {unreachable_digests[0]!r} by digest, gives no "
+                f"way to obtain it, and says nothing about how else to check it. A "
+                f"verifier can confirm your file hashes to what you say only if they "
+                f"have your file, and a file on your own disk is not somewhere anyone "
+                f"else can reach. Any one of these fixes it: publish it where a "
+                f"stranger can fetch it and give the 'url'; or, if it is text under "
+                f"256KB, put the whole thing in this record as 'content' beside "
+                f"'content_sha256', so the artifact travels with the claim; or say in "
+                f"'how_to_check' how someone could check this without your copy.")
+        raise Rejection(
+            SCHEMA,
+            "none of this evidence can be reached by anyone but you, and "
+            "how_to_check is empty. Give a 'url', or inline bytes as 'content', or "
+            "say how a stranger could check this — any one of the three is enough.")
     if not evidence and not str(record.get("how_to_check", "")).strip():
         raise Rejection(SCHEMA, "an open claim offers evidence, or says how a stranger "
                                 "could check it, or both. With neither there is nothing "

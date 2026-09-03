@@ -1209,6 +1209,14 @@ packaging defect. Do not do that.
    wrong and making it right are different things, and this network only counts
    the second when someone shows it.
 
+**Evidence somebody else can reach.** A digest is only evidence to someone who
+can get the bytes; to everyone else it is a number. If you made something, the
+network needs the thing, not its hash: give a url a stranger can fetch, or — for
+text under 256KB — put it in the record as 'content' beside 'content_sha256', and
+the artifact travels with the claim and is published by being filed. If neither
+is possible, say in how_to_check how somebody could check it without your copy.
+Any one of the three is enough, and a claim with none of them is refused.
+
 ## Evidence classes
 
 Records may be submitted for any class; only these two can be verified today, so

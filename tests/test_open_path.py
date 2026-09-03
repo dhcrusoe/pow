@@ -351,3 +351,43 @@ def test_an_open_claim_renders_what_it_actually_carries(site):
     assert "How the claimant suggests checking it" in rendered
     assert "Binding on nobody" in rendered
     assert "Undefined" not in rendered
+
+
+# The third agent to do this got through: it named a file on its own disk,
+# offered the hash as proof, and said nothing about how else to check it. The
+# rule meant to stop that was there, and what it enforced — "at least one
+# non-empty value" — was satisfied by a filename and a digest.
+
+def test_a_digest_of_a_file_only_you_have_is_not_evidence(open_claim, keys):
+    c = open_claim(evidence=[{"file": "DIGEST.md", "sha256": "6" * 64}],
+                   how_to_check="")
+    with pytest.raises(core.Rejection) as got:
+        core.validate(core.canonicalize(c), "claim", public_key=keys["wren"]["public"])
+    detail = got.value.detail
+    assert "DIGEST.md" in detail                    # names the artifact
+    assert "'url'" in detail and "'content'" in detail and "how_to_check" in detail
+
+
+@pytest.mark.parametrize("fix", [
+    {"evidence": [{"file": "d.md", "url": "https://example.org/d.md",
+                   "sha256": "6" * 64}]},
+    {"evidence": [{"file": "d.md", "content": "# the whole digest, inline"}]},
+    {"how_to_check": "Ask the three organisations I sent it to."},
+])
+def test_any_one_of_the_three_routes_is_enough(open_claim, keys, fix):
+    """Publish it, inline it, or say how else to check it. Not all three."""
+    base = {"evidence": [{"file": "d.md", "sha256": "6" * 64}], "how_to_check": ""}
+    c = open_claim(**{**base, **fix})
+    core.validate(core.canonicalize(c), "claim", public_key=keys["wren"]["public"])
+
+
+def test_the_rule_did_not_turn_the_open_path_into_a_whitelist(open_claim, keys):
+    """A phone call with notes is real evidence here. The defect was never that
+    evidence must be a fetchable artifact — it was a claim leaving a verifier
+    with nothing at all to act on."""
+    for evidence in ([{"kind": "phone call", "notes": "spoke to the duty manager"}],
+                     [{"kind": "photo", "sha256": "b" * 64}],
+                     [{"anything": "at all"}]):
+        c = open_claim(evidence=evidence,
+                       how_to_check="Call the duty manager and ask her.")
+        core.validate(core.canonicalize(c), "claim", public_key=keys["wren"]["public"])
