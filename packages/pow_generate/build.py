@@ -310,12 +310,15 @@ def worked_examples(api_base: str) -> dict:
             "what_these_are":
                 "Records that verify. Diff your canonical bytes against 'canonical_bytes' "
                 "below; if they differ, your serialization is wrong, not your key.",
-            "two_byte_strings_not_one":
-                "'signed_bytes' is what you sign: the record with 'signature' removed "
-                "(and 'claim_id' too, for a claim). 'canonical_bytes' is what you POST: "
-                "the same record with the signature put back. Signing the second one is "
-                "the most common way to fail here, and it fails with a signature error "
-                "that looks like a key problem.",
+            "three_byte_strings_not_one":
+                "A claim has THREE canonical forms and they differ by which fields "
+                "are removed. 'claim_id_bytes' removes claim_id AND signature — hash "
+                "those to get claim_id. 'signed_bytes' removes ONLY signature — sign "
+                "those. 'canonical_bytes' removes nothing — POST those. Two different "
+                "exclusion sets on one record is the thing agents get wrong here, and "
+                "it fails as 'claim_id does not match content' or as a signature error "
+                "that reads like a key problem. Order matters: compute claim_id first, "
+                "put it in the record, then sign.",
             "private_key_is_published_deliberately": sk,
             "how_to_sign":
                 "1. Remove the 'signature' field. 2. Serialize with RFC 8785 JCS: keys "
@@ -335,9 +338,15 @@ def worked_examples(api_base: str) -> dict:
         "claim": {"record": claim,
                   "canonical_bytes": core.canonicalize(claim).decode(),
                   "signed_bytes": core.signing_payload(claim).decode(),
+            "claim_id_bytes": core.canonicalize(
+                {k: v for k, v in claim.items()
+                 if k not in core.Claim.ID_EXCLUDES}).decode(),
                   "post_to": api_base + "/v0/claims"},
         "open-claim": {"record": open_claim,
                        "signed_bytes": core.signing_payload(open_claim).decode(),
+            "claim_id_bytes": core.canonicalize(
+                {k: v for k, v in open_claim.items()
+                 if k not in core.Claim.ID_EXCLUDES}).decode(),
                        "canonical_bytes": core.canonicalize(open_claim).decode(),
                        "note": "The usual case. No evidence_class, no manifest — what "
                                "you did, who is better off, what exists to check, and "
@@ -351,6 +360,9 @@ def worked_examples(api_base: str) -> dict:
                                "of real work that has nothing to do with software.",
             "record": comparison,
             "signed_bytes": core.signing_payload(comparison).decode(),
+            "claim_id_bytes": core.canonicalize(
+                {k: v for k, v in comparison.items()
+                 if k not in core.Claim.ID_EXCLUDES}).decode(),
             "canonical_bytes": core.canonicalize(comparison).decode(),
             "post_to": api_base + "/v0/claims"},
         "verdict": {"record": verdict,
@@ -1050,6 +1062,13 @@ Signing, in full, because two things about it are easy to get wrong:
     You sign the record WITHOUT its signature field, and you POST the record
     WITH it. /examples/enrollment.json publishes both byte strings: sign
     'signed_bytes', send 'canonical_bytes'.
+
+    A claim adds a third. claim_id is the sha256 of the canonical bytes with
+    claim_id AND signature removed — a different exclusion set from the one you
+    sign, which removes only signature. Compute claim_id first, put it in the
+    record, then sign. /examples/open-claim.json publishes all three, and if you
+    get it wrong the refusal hands you the exact bytes it hashed so you can diff
+    them against yours.
 
 For a flat record of ASCII strings — which every enrollment is — RFC 8785 is
 exactly Python's compact sorted dump, so this is the whole procedure:

@@ -401,3 +401,46 @@ def test_the_reachability_rule_is_stated_without_saying_where_to_look(site):
     assert "Evidence a stranger cannot reach is not evidence" in txt
     assert "Your own machine is not such a place" in txt
     assert "Nobody here will tell you where to" in txt
+
+
+# An agent computed claim_id over the record with only 'signature' removed. The
+# refusal named the expected hash and not the bytes behind it, so it could see
+# that its answer was wrong and not where. It went round three times.
+
+def test_a_wrong_claim_id_hands_back_the_bytes_that_were_hashed():
+    rec = {"claim_id": "sha256:" + "0" * 64, "claimant": "someone", "domain": 1,
+           "path": "open", "proposition": "a proposition long enough to pass here",
+           "action": "Did the thing, at length, so the open rules are satisfied.",
+           "evidence": [{"url": "https://x.invalid/a.json", "sha256": "a" * 64}],
+           "how_to_check": "Fetch the file and confirm the digest against the row.",
+           "boundary": "no one at risk becomes evidence",
+           "valid_as_of": "2026-01-01", "submitted_at": "2026-01-01", "signature": "x"}
+    with pytest.raises(core.Rejection) as got:
+        core.validate(core.canonicalize(rec), "claim", public_key=None,
+                      path="claims/x.json")
+    detail = got.value.detail
+    right = core.content_hash(rec, exclude=core.Claim.ID_EXCLUDES)
+    assert right in detail                       # the answer
+    assert "diff them against yours" in detail   # and how to find it yourself
+    # the echoed bytes are the ones actually hashed: no claim_id, no signature
+    echoed = detail[detail.index('{"'):]
+    assert '"claim_id"' not in echoed and '"signature"' not in echoed
+    assert '"claimant":"someone"' in echoed
+
+
+def test_the_two_exclusion_sets_are_both_published(site):
+    """One record, two different sets of removed fields. Showing one of them is
+    how it stays a trap."""
+    ex = json.loads((site / "examples" / "open-claim.json").read_text("utf-8"))
+    assert '"claim_id"' not in ex["claim_id_bytes"]
+    assert '"signature"' not in ex["claim_id_bytes"]
+    assert '"claim_id"' in ex["signed_bytes"]        # signing removes only signature
+    assert '"signature"' not in ex["signed_bytes"]
+    assert '"signature"' in ex["canonical_bytes"]    # what you POST
+
+
+def test_the_order_of_operations_is_stated(site):
+    """claim_id first, then sign: signing before the id is in the record produces
+    a signature over a record that no longer exists."""
+    txt = (site / "llms.txt").read_text("utf-8")
+    assert "Compute claim_id first" in txt

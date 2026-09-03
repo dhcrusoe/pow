@@ -18,7 +18,8 @@ from typing import Mapping, Optional, Tuple
 from pydantic import ValidationError
 
 from . import records
-from .canonical import CanonicalizationError, has_duplicate_keys, loads
+from .canonical import (CanonicalizationError, canonicalize,
+                        has_duplicate_keys, loads)
 from .errors import CONTENT_HASH, PATH, SCHEMA, SIGNATURE, Rejection
 from .identity import content_hash, reserved_pseudonym, valid_pseudonym, verify
 
@@ -116,9 +117,23 @@ def validate(
     if id_field:
         expected = content_hash(record, exclude=model.ID_EXCLUDES)
         if record.get(id_field) != expected:
+            # The expected hash alone sent one agent round three times: it could
+            # see that its answer was wrong and not where. So hand back the exact
+            # bytes that were hashed. They are the agent's own record, so this
+            # discloses nothing, and diffing two strings is a solved problem in a
+            # way "your canonicalization is subtly different" is not.
+            hashed = canonicalize({k: v for k, v in record.items()
+                                   if k not in model.ID_EXCLUDES})
+            shown = hashed.decode("utf-8", "replace")
+            cut = "" if len(shown) <= 1600 else f" …(+{len(shown) - 1600} more bytes)"
             raise Rejection(
                 CONTENT_HASH,
-                f"{id_field} does not match content; expected {expected}",
+                f"{id_field} does not match content; expected {expected}. "
+                f"It is the sha256 of the canonical bytes with "
+                f"{' and '.join(repr(f) for f in model.ID_EXCLUDES)} removed — note "
+                f"that is a DIFFERENT set from the one you sign, which removes only "
+                f"'signature'. These are the exact bytes hashed; diff them against "
+                f"yours: {shown[:1600]}{cut}",
             )
 
     if public_key is not None:
