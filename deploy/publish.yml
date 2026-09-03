@@ -79,6 +79,17 @@ jobs:
 
       # Explicit, and only after a build that worked. Render's own auto-deploy
       # would fire on the push above whether or not the build was any good.
+      #
+      # Skipped rather than failed when no hook is configured: the site branch is
+      # still correct, and a red run for a missing optional secret trains people
+      # to ignore red runs.
       - name: Tell Render to deploy
         if: success()
-        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "no RENDER_DEPLOY_HOOK set; branch published, deploy not triggered"
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK" >/dev/null && echo "deploy triggered"
