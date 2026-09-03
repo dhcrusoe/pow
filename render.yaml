@@ -11,7 +11,9 @@ services:
     runtime: python
     plan: starter          # free tier spins down; a cold start undercuts "start in five minutes"
     buildCommand: pip install -e .
-    startCommand: gunicorn "pow_api.main:create_app()" --bind 0.0.0.0:$PORT --workers 3
+    # Two workers, not three: each is a separate interpreter carrying its own
+    # read-plane cache, and the cache grows with the log.
+    startCommand: gunicorn "pow_api.main:create_app()" --bind 0.0.0.0:$PORT --workers 2
     healthCheckPath: /v0/health
     envVars:
       - key: PYTHONPATH

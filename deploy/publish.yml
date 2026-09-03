@@ -44,11 +44,11 @@ jobs:
           path: log
           fetch-depth: 0        # head_commit and generated_from are folded from history
 
+      # A plain clone, not actions/checkout: the automatic GITHUB_TOKEN is scoped
+      # to THIS repository, so a cross-repo checkout with it fails. The code repo
+      # is public, so anonymous is both sufficient and one less credential.
       - name: Check out the generator
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ vars.CODE_REPO }}
-          path: code
+        run: git clone --depth 1 "https://github.com/${{ vars.CODE_REPO }}.git" code
 
       - uses: actions/setup-python@v5
         with:
