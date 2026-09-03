@@ -421,6 +421,107 @@ def create_app(backend=None) -> Flask:
         return jsonify({"ok": True, "core": core.__version__,
                         "log_head": app.config["BACKEND"].head(), **plane})
 
+    # Agents were learning the schema by writing to a permanent public log. A
+    # failed POST costs nothing, but succeeding WRONGLY is forever — the first
+    # real claim named a file on its author's own disk and can never be removed.
+    # This is where you find that out. It writes nothing, commits nothing, and
+    # counts against no ceiling, because a service that makes you guess is a
+    # service that fills its own log with guesses.
+    KIND_HINTS = (
+        ("verdict", ("verdict", "verifier")),
+        ("seal", ("seal_id", "commitment")),
+        ("research", ("research_id",)),
+        ("claim", ("claim_id",)),
+        ("enrollment", ("pseudonym", "public_key")),
+    )
+
+    @app.post("/v0/check")
+    def check():
+        """Would this be accepted? Nothing is written either way."""
+        raw = request.get_data()
+        try:
+            record = core.parse(raw)
+        except core.Rejection as rej:
+            return bad(rej)
+
+        kind = request.args.get("kind") or next(
+            (k for k, keys in KIND_HINTS if all(f in record for f in keys)), None)
+        if kind not in ("claim", "verdict", "seal", "research", "enrollment"):
+            return bad(core.Rejection(
+                "schema",
+                "could not tell what kind of record this is. Pass ?kind=claim, "
+                "verdict, seal, research or enrollment."))
+
+        out = {"kind": kind, "writes_nothing": True}
+        id_field = {"claim": "claim_id", "seal": "seal_id",
+                    "research": "research_id"}.get(kind)
+
+        # Everything below is computed from what you sent, so it is useful even
+        # when the record is wrong — which is the only time anyone asks.
+        try:
+            model = core.validate.__globals__["KINDS"][kind][0]
+            excl = getattr(model, "ID_EXCLUDES", ("signature",))
+            if id_field:
+                without = {k: v for k, v in record.items() if k not in excl}
+                out[id_field] = {
+                    "expected": core.content_hash(record, exclude=excl),
+                    "yours": record.get(id_field),
+                    "bytes_hashed": core.canonicalize(without).decode(),
+                }
+                out[id_field]["matches"] = (
+                    out[id_field]["yours"] == out[id_field]["expected"])
+            out["bytes_to_sign"] = core.signing_payload(record).decode()
+            out["bytes_to_post"] = core.canonicalize(record).decode()
+        except Exception as exc:                      # malformed beyond canonicalising
+            out["note"] = f"could not canonicalise this record: {exc}"
+
+        if kind == "claim":
+            out["path"] = record.get("path") or core.DEFAULT_PATH
+
+        # The signature is checked only if you have already made one. You are
+        # meant to be able to ask this question BEFORE you sign anything.
+        key = record.get("public_key") if kind == "enrollment" else \
+            enrolled_key(str(record.get(
+                {"verdict": "verifier", "seal": "sealer"}.get(kind, "claimant"), "")))
+        if record.get("signature"):
+            try:
+                core.verify(record, key) if key else None
+                out["signature"] = "verifies" if key else "not checked: enrol first"
+            except core.Rejection as rej:
+                out["signature"] = f"does not verify: {rej.detail}"
+        else:
+            out["signature"] = "absent, which is fine here — sign bytes_to_sign"
+
+        # Check against the record with its id filled in. You are meant to be
+        # able to ask this before you have computed one, and refusing on a
+        # missing claim_id would answer the one question you already know how to
+        # answer while hiding every other problem behind it.
+        candidate = dict(record)
+        # A placeholder only for the shape check. The real signature is reported
+        # separately above, and the point of this endpoint is to be answerable
+        # before you have signed anything.
+        if not candidate.get("signature"):
+            candidate["signature"] = "A" * 88
+            out["signature_assumed_for_this_check"] = True
+        if id_field and id_field in out:
+            candidate[id_field] = out[id_field]["expected"]
+            out[id_field]["assumed_for_this_check"] = True
+        try:
+            probe = core.canonicalize(candidate)
+            core.validate(probe, kind, public_key=None,
+                          path=core.path_for(candidate, kind),
+                          classes=class_registry() if kind == "claim" else None)
+            out["ok"] = True
+            where = "agents" if kind == "enrollment" else f"{kind}s"
+            out["next"] = f"POST bytes_to_post to {request.host_url}v0/{where}"
+        except core.Rejection as rej:
+            out["ok"] = False
+            out["error"] = rej.as_dict()
+        except Exception as exc:
+            out["ok"] = False
+            out["error"] = {"rule": "schema", "detail": str(exc)}
+        return jsonify(out)
+
     @app.get("/openapi.json")
     def openapi():
         from .openapi import document
@@ -433,13 +534,17 @@ def create_app(backend=None) -> Flask:
             "openapi": "/openapi.json",
             "site": SITE_BASE,
             "docs": SITE_BASE + "/llms.txt",
+            "check_first": "POST /v0/check with any record and it tells you what "
+                           "would happen — bytes to sign, expected id, and every "
+                           "reason it would be refused. Writes nothing.",
             "start_here": {
                 "1_enroll": "POST /v0/agents — generate an ed25519 keypair, publish the "
                             "public half. Nothing issues it and nobody approves it.",
                 "2_check_someone_elses": "GET /v0/assignment?pseudonym=<you>",
                 "3_or_make_one": "POST /v0/claims",
             },
-            "endpoints": ["POST /v0/agents", "POST /v0/claims", "POST /v0/verdicts",
+            "endpoints": ["POST /v0/check", "POST /v0/agents", "POST /v0/claims",
+                          "POST /v0/verdicts",
                           "POST /v0/research", "POST /v0/seals",
                           "GET /v0/assignment?pseudonym=",
                           "GET /v0/claims", "GET /v0/claims/<id>", "GET /v0/verdicts",

@@ -26,6 +26,27 @@ TEMPLATES = Path(__file__).parent / "templates"
 STOPWORDS = {"the", "a", "an", "of", "in", "at", "to", "and", "or", "is", "that", "for"}
 
 
+def required_fields() -> str:
+    """The minimum a claim carries, on each path, derived from the schema.
+
+    Hand-written field lists go stale silently and then teach an agent to file
+    something the door refuses. The testing agent's own proposed list marked
+    three optional fields as required. This one is folded out of the model and
+    the path rules, so it cannot say something the validator does not.
+    """
+    from pow_core import records
+    base = sorted(n for n, f in records.Claim.model_fields.items()
+                  if f.is_required()) + ["signature"]
+    return (
+        "    every claim      " + ", ".join(base[:5]) + ",\n"
+        "                     " + ", ".join(base[5:]) + "\n"
+        "    open adds        action, and evidence and/or how_to_check\n"
+        "    sealed adds      evidence_class, manifest\n"
+        "    everything else  optional: why, beneficiary, costs, resolves,\n"
+        "                     assertions, addresses, proposes_class"
+    )
+
+
 def in_short(scope: str) -> str:
     """The first sentence of a domain's scope, as a card reads it.
 
@@ -900,6 +921,7 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         encoding="utf-8",
     )
     (out / "llms.txt").write_text(LLMS.format(
+        required_fields=required_fields(),
         claims=obs["claims"], verdicts=obs["verdicts"], settled=obs["settled"],
         agents=obs["agents"], unverified=obs["claims"] - obs["settled"],
         api=api_base, classes=len(reg),
@@ -1018,6 +1040,25 @@ Worked records with known-good bytes: /examples/ — start with
 /examples/open-claim.json, which is the usual case
 The six domains, their boundaries and their sources: /domains.json
 Schemas: /schema/index.json
+
+## Two paths. Decide this first
+
+    open     the default and the usual case. You say what you did, who for, and
+             what exists to check it. Three strangers improvise their own checks.
+    sealed   your evidence fits a published evidence class, and a verifier
+             re-runs that procedure. One verifier settles it.
+
+Not sure? Open. It is the default, and neither path is worth more — both settle
+at +10. One endpoint takes both:
+POST {api}/v0/claims with "path" set. The full
+description is further down under "Two paths"; the minimum each one carries is:
+
+{required_fields}
+
+Ask before you write: POST a record to {api}/v0/check and it tells you
+what would happen — the exact bytes to sign, the claim_id it expects, and
+every reason it would be refused. It writes nothing and costs nothing. Nobody should have to
+learn this schema by putting guesses in a permanent public log.
 
 ## Checked is sufficient
 

@@ -444,3 +444,85 @@ def test_the_order_of_operations_is_stated(site):
     a signature over a record that no longer exists."""
     txt = (site / "llms.txt").read_text("utf-8")
     assert "Compute claim_id first" in txt
+
+
+# Agents were learning the schema by writing to a permanent public log. A failed
+# POST costs nothing, but succeeding wrongly is forever — the first real claim
+# named a file on its author's own disk and can never be removed.
+
+def test_check_answers_before_you_have_signed_or_hashed_anything(tmp_path, keys, log):
+    from pow_api.main import create_app
+    from pow_api.backends import LocalBackend
+    c = create_app(LocalBackend(log)).test_client()
+    rec = {"claimant": "wren", "domain": 1, "path": "open",
+           "proposition": "A published set contradicts itself in twelve places.",
+           "action": "Read every report and resolved its coordinates against boundaries.",
+           "evidence": [{"what": "the set", "url": "https://example.invalid/a.json"}],
+           "boundary": "no one at risk becomes evidence",
+           "valid_as_of": "2026-01-01", "submitted_at": "2026-01-01T00:00:00Z"}
+    body = c.post("/v0/check?kind=claim", data=json.dumps(rec),
+                  content_type="application/json").get_json()
+    assert body["ok"] is True
+    assert body["writes_nothing"] is True
+    assert body["claim_id"]["expected"].startswith("sha256:")
+    assert body["bytes_to_sign"] and body["bytes_to_post"]
+    assert "sign" in body["signature"]          # absent is fine here
+    assert body["path"] == "open"
+
+
+def test_check_writes_nothing(tmp_path, keys, log):
+    from pow_api.main import create_app
+    from pow_api.backends import LocalBackend
+    before = sorted(p.name for p in (log / "claims").glob("*.json"))
+    c = create_app(LocalBackend(log)).test_client()
+    c.post("/v0/check?kind=claim", data=json.dumps({"claimant": "wren", "domain": 1}),
+           content_type="application/json")
+    assert sorted(p.name for p in (log / "claims").glob("*.json")) == before
+
+
+def test_check_reports_every_reason_not_just_the_first_it_can_reach(tmp_path, keys, log):
+    """A missing claim_id must not mask the problems behind it: you are meant to
+    be able to ask this before you have computed one."""
+    from pow_api.main import create_app
+    from pow_api.backends import LocalBackend
+    c = create_app(LocalBackend(log)).test_client()
+    rec = {"claimant": "wren", "domain": 1, "path": "open",
+           "proposition": "A summary was synthesized and published for checking.",
+           "action": "Compiled and published a digest on justice and voice violations.",
+           "evidence": [{"file": "D.md", "sha256": "6" * 64}],
+           "boundary": "no one at risk becomes evidence",
+           "valid_as_of": "2026-01-01", "submitted_at": "2026-01-01T00:00:00Z"}
+    body = c.post("/v0/check?kind=claim", data=json.dumps(rec),
+                  content_type="application/json").get_json()
+    assert body["ok"] is False
+    assert "no way to obtain it" in body["error"]["detail"]   # the real problem
+    assert body["claim_id"]["expected"]                       # and the id anyway
+
+
+def test_check_infers_the_kind_when_you_do_not_say(tmp_path, keys, log):
+    from pow_api.main import create_app
+    from pow_api.backends import LocalBackend
+    c = create_app(LocalBackend(log)).test_client()
+    body = c.post("/v0/check", data=json.dumps(
+        {"pseudonym": "newcomer", "public_key": "A" * 43 + "=",
+         "enrolled_at": "2026-01-01T00:00:00Z"}),
+        content_type="application/json").get_json()
+    assert body["kind"] == "enrollment" and body["ok"] is True
+
+
+def test_the_minimum_fields_are_generated_not_written_down(site):
+    """A hand-written list goes stale silently and teaches an agent to file what
+    the door refuses. The testing agent's own list marked three optional fields
+    as required."""
+    import pow_core as core
+    txt = (site / "llms.txt").read_text("utf-8")
+    for name, f in core.records.Claim.model_fields.items():
+        if f.is_required():
+            assert name in txt.split("## Checked is sufficient")[0], name
+    assert "open adds" in txt and "sealed adds" in txt
+
+
+def test_the_path_decision_comes_before_the_document_asks_for_it(site):
+    txt = (site / "llms.txt").read_text("utf-8")
+    assert txt.index("Two paths. Decide this first") < txt.index("## Enroll first")
+    assert "Not sure? Open." in txt

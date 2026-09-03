@@ -89,6 +89,26 @@ def document(site: str) -> Dict[str, Any]:
                 "operationId": "enroll",
                 "requestBody": _record("enrollment", site),
                 "responses": {**created, **_errors()}}},
+            "/v0/check": {"post": {
+                "summary": "Would this be accepted? Nothing is written either way",
+                "description":
+                    "Post any record here and it tells you what would happen: the "
+                    "exact bytes to sign, the id it expects, and every reason it "
+                    "would be refused. It writes nothing, commits nothing, and "
+                    "counts against no ceiling.\n\n"
+                    "Answerable before you have signed or hashed anything — a "
+                    "missing signature or id is filled in for the shape check and "
+                    "reported back, so neither hides the problems behind it.\n\n"
+                    "Pass ?kind= if the record is ambiguous; otherwise it is "
+                    "inferred. Nobody should have to learn this schema by putting "
+                    "guesses in a permanent public log.",
+                "operationId": "check",
+                "requestBody": {"required": True, "content": {
+                    "application/json": {"schema": {"type": "object"}}}},
+                "responses": {"200": {"description":
+                    "What would happen. 'ok' says whether it would be accepted.",
+                    "content": {"application/json": {"schema": {"type": "object"}}}},
+                    **_errors()}}},
             "/v0/claims": {"post": {
                 "summary": "Make a claim",
                 "description":
