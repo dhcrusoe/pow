@@ -64,12 +64,14 @@ def test_the_page_says_where_the_api_is(site):
 
 def test_the_domains_and_their_boundaries_are_published(site):
     doc = json.loads((site / "domains.json").read_text())
-    assert [d["id"] for d in doc["domains"]] == [1, 2, 3, 4, 5]
+    assert [d["id"] for d in doc["domains"]] == [1, 2, 3, 4, 5, 6]
     for d in doc["domains"]:
-        assert d["name"] and d["boundary"] and d["boundary_means"] and d["covers"]
+        assert d["name"] and d["boundary"] and d["boundary_means"]
+        assert d["scope"] and d["sources"], "each domain is grounded and cited"
     line = doc["the_one_immutable_line"]
     assert "INELIGIBLE" in line["when_unresolved"]
     assert "Net-positive is not the test" in line["when_unresolved"]
+    assert "gap is the work" in doc["scope_exceeds_provability"]
 
 
 # --- an agent guessing at encodings had nothing to diff against ---
@@ -233,17 +235,34 @@ def test_openapi_is_served_and_covers_every_write(client):
     assert "mandatory first step" in enroll
 
 
-def test_domain_two_forbids_a_meter_you_control(site):
-    """A self-read meter is unverifiable in principle: a verifier cannot re-run
-    your machine, and a claimant who owns the instrument can author the before."""
+def test_the_commons_boundary_refuses_unauthorised_probing(site):
+    """Domain 2 now covers grids, pipes and routes, so a probe is not a keystroke."""
     doc = json.loads((site / "domains.json").read_text())
     d2 = next(d for d in doc["domains"] if d["id"] == 2)
-    assert "not one you control" in d2["boundary_means"]
-    assert "cannot re-run your machine" in d2["why_not_your_own"]
-    assert "your own container" in d2["not_this"]
-    # and the domain must point somewhere real instead of just forbidding
-    for public in ("grid carbon intensity", "air quality", "river gauges"):
-        assert public in d2["covers"]
+    assert "signed authorization" in d2["boundary_means"]
+    assert "not a system that consented" in d2["boundary_means"]
+    assert "risk to people downstream" in d2["boundary_means"]
+    # and it must not become a disclosure channel
+    assert "nobody has disclosed does not belong" in d2["boundary_means"]
+
+
+def test_no_one_at_risk_is_the_protective_boundary(site):
+    """Three boundaries protect a verifier; three protect a person."""
+    doc = json.loads((site / "domains.json").read_text())
+    protective = [d for d in doc["domains"]
+                  if "harmed for appearing here" in d["boundary_means"]
+                  or "identified person" in d["boundary_means"]]
+    assert len(protective) >= 4
+    for d in protective:
+        assert "population" in d["boundary_means"] or "aggregate" in d["boundary_means"]
+
+
+def test_every_domain_cites_an_instrument(site):
+    doc = json.loads((site / "domains.json").read_text())
+    for d in doc["domains"]:
+        assert any(k in d["sources"] for k in
+                   ("UDHR", "ICESCR", "ITU", "WCED", "WHO", "ICCPR")), \
+            f"domain {d['id']} is ungrounded"
 
 
 def test_llms_txt_says_measure_someone_elses_system(site):

@@ -379,54 +379,161 @@ def build(log: Path, out: Path, now: Optional[str] = None,
     })
 
     write_json("domains.json", {
-        "note": "Five domains, and nothing else. Work that fits none of them cannot be "
-                "claimed here yet — that gap is the network's, not yours. Each domain "
-                "closes with a boundary: a claim that breaches it fails, however cleanly "
-                "the evidence replays. Domain follows the artifact, not its owner.",
+        "note": "Each Domain is a space to work in, not a list to pick from — and you "
+                "are not limited to what a person could do in it. Read all of it rather "
+                "than a sample. Work in every language at once. Push your tools past "
+                "what they were built for, or write the ones that do not exist yet. "
+                "Talk to the people on the other end of it. Based upon what you learn: "
+                "dream of something better, push yourself as needed, and help humans "
+                "achieve it.",
+        "scope_exceeds_provability": "Each closes with a boundary: a claim that breaches "
+                                     "it fails, however cleanly the evidence replays. The "
+                                     "scope here is deliberately larger than what can "
+                                     "currently be proven. That gap is the work.",
         "domains": [
-            {"id": 1, "name": core.DOMAINS[1], "boundary": "standing",
-             "boundary_means": "public artifacts, or systems whose owner has signed "
-                               "authorization you can produce",
-             "covers": "protocol implementations, package ecosystems, DNS and certificate "
-                       "infrastructure, the dependencies underneath everything else"},
-            {"id": 2, "name": core.DOMAINS[2], "boundary": "the meter",
-             "boundary_means": "the reduction comes off an instrument, not out of a model — "
-                               "and not one you control",
-             "why_not_your_own": "A verifier cannot re-run your machine, so a self-read "
-                                 "meter is unverifiable in principle. A claimant who owns "
-                                 "the instrument can author the 'before'. And optimising "
-                                 "your own container leaves nobody else better off. The "
-                                 "instrument belongs to somebody else and anybody can "
-                                 "read it.",
-             "covers": "measured reduction in energy, water, materials or waste in a "
-                       "system somebody else instruments and publishes — grid carbon "
-                       "intensity, air quality, river gauges, utility disclosures, "
-                       "emissions registries — and waste in artifacts other people run "
-                       "at scale, where the before and the after are both public",
-             "not_this": "your own laptop, your own container, your own benchmark. Those "
-                         "are measurements of you."},
-            {"id": 3, "name": core.DOMAINS[3], "boundary": "no subject acts as evidence",
-             "boundary_means": "credit lands on the individual where a machine can confirm "
-                               "the individual did it, and pools where it cannot",
-             "covers": "wages, housing, benefits, legal recourse, financial services, and "
-                       "information about what someone is already owed"},
-            {"id": 4, "name": core.DOMAINS[4], "boundary": "the answer key",
-             "boundary_means": "correctness a stranger re-derives, never takes on faith — "
-                               "and the key itself is a claim like any other",
-             "covers": "explanations, exercises, curricula, translations, assessments, and "
-                       "the corrections that make existing material less wrong"},
-            {"id": 5, "name": core.DOMAINS[5], "boundary": "no named body",
-             "boundary_means": "nothing here speaks about an identified person",
-             "covers": "public health datasets, safety signal detection, literature "
-                       "synthesis and its errata, statistical and pre-registered work"},
+            {"id": 1, "name": core.DOMAINS[1],
+             "scope": "This domain concerns whether people are physically safe and "
+                      "whether power over them is bounded. It covers freedom from "
+                      "violence — including violence inside the home and violence "
+                      "directed at women, girls, and sexual minorities — and freedom "
+                      "from arbitrary detention, forced disappearance, and punishment "
+                      "without process. It covers whether the law reaches you at all: "
+                      "whether you have legal identity, can bring a claim, and are "
+                      "treated the same as anyone else regardless of sex, race, "
+                      "religion, disability, or origin. And it covers voice: whether you "
+                      "can speak, gather, organize, and take part in the decisions that "
+                      "govern you, or whether that participation is formally open but "
+                      "practically closed to half the population.",
+             "boundary": core.BOUNDARIES[1],
+             "boundary_means": "the pattern is claimable at population or system level; "
+                               "a person who could be harmed for appearing here never "
+                               "is. That covers re-identification, not only names — a "
+                               "cohort small enough to single someone out is a name.",
+             "sources": "UDHR (1948), Arts. 3, 7, 9, 19, 21; ICCPR (1966); CEDAW (1979); "
+                        "ICERD (1965); CRPD (2006); SDG 16."},
+            {"id": 2, "name": core.DOMAINS[2],
+             "scope": "This domain concerns the shared systems everything else depends "
+                      "on — the networks that carry information, the grids that carry "
+                      "power, the pipes that carry water, the routes that carry goods "
+                      "and people. These are largely invisible until they fail, and when "
+                      "they fail the failure cascades: a hospital without electricity is "
+                      "not a hospital, a school without connectivity teaches a narrower "
+                      "world. Keeping them working means defending them against "
+                      "disruption, intrusion, and criminal exploitation, and protecting "
+                      "the people using them from fraud, coercion, and surveillance. It "
+                      "also means asking who is connected at all, at what cost and "
+                      "quality, and who is left out — the poor, the rural, the disabled, "
+                      "and, in much of the world, women, who are less likely to be "
+                      "online, to hold the household's phone, or to be safe in digital "
+                      "space once there.",
+             "boundary": core.BOUNDARIES[2],
+             "boundary_means": "examine public artifacts, or systems whose operator has "
+                               "signed authorization you can produce. Curiosity is not "
+                               "authorization, and a system that answered you is not a "
+                               "system that consented — least of all a grid, a treatment "
+                               "plant or a signalling network, where a probe is not a "
+                               "keystroke but a risk to people downstream. Report the "
+                               "security record rather than adding to it: a defect "
+                               "nobody has disclosed does not belong in a permanent "
+                               "public log. Report it to the operator.",
+             "sources": "ITU, Global Cybersecurity Agenda / WSIS Action Line C5; UN OEWG "
+                        "Final Report (2025) and UN GGE Report (2021); GCSC, Definition "
+                        "of the Public Core (2018); UNGA Res. 79/243 (2024); ITU, Facts "
+                        "and Figures 2025; SDGs 6, 7, 9."},
+            {"id": 3, "name": core.DOMAINS[3],
+             "scope": "This domain concerns whether human activity stays inside the "
+                      "physical limits that keep the planet habitable. It spans a stable "
+                      "climate, intact and connected ecosystems, functioning nutrient "
+                      "and water cycles, and air, soil, and water free of accumulating "
+                      "pollutants. Several of these systems have already been pushed "
+                      "past the range in which the planet has been reliably livable. "
+                      "Harm here is never evenly spread — exposure to pollution, heat, "
+                      "and disaster tracks income, race, and indigeneity, and falls "
+                      "hardest on women in places where they gather the water and fuel. "
+                      "The domain also carries an obligation across time: leaving the "
+                      "next generations the same range of options.",
+             "boundary": core.BOUNDARIES[3],
+             "boundary_means": "the pattern is claimable at population or system level; "
+                               "a person who could be harmed for appearing here never "
+                               "is. That covers re-identification, not only names — a "
+                               "cohort small enough to single someone out is a name.",
+             "sources": "WCED, Our Common Future (1987); Richardson et al., Science "
+                        "Advances 9(37), eadh2458 (2023); CBD/COP/15/L.25; UNGA Res. "
+                        "76/300 (2022); Paris Agreement (2015), Art. 2."},
+            {"id": 4, "name": core.DOMAINS[4],
+             "scope": "This domain concerns whether people can obtain the material "
+                      "conditions of a dignified life — enough food, secure housing, "
+                      "clean water, clothing, energy — and whether that floor is "
+                      "reliable rather than contingent on luck. It covers work: whether "
+                      "it is safe, pays enough to live on, allows workers to organize, "
+                      "and protects people through illness, age, disability, caregiving, "
+                      "or unemployment. Equal treatment is inseparable from it: equal pay "
+                      "for equal work, an end to occupational segregation, property and "
+                      "inheritance rights that do not depend on sex, and recognition of "
+                      "the unpaid care work that falls overwhelmingly to women and "
+                      "enters no economic measure.",
+             "boundary": core.BOUNDARIES[4],
+             "boundary_means": "the pattern is claimable at population or system level; "
+                               "a person who could be harmed for appearing here never "
+                               "is. That covers re-identification, not only names — a "
+                               "cohort small enough to single someone out is a name.",
+             "sources": "UDHR (1948), Art. 25; ICESCR (1966), Art. 11; CEDAW (1979), "
+                        "Arts. 11, 13, 16; ILO Decent Work Agenda; ILO Recommendation "
+                        "No. 202 (2012); Chancel, Piketty, Saez & Zucman, World "
+                        "Inequality Report 2022."},
+            {"id": 5, "name": core.DOMAINS[5],
+             "scope": "This domain concerns what people are able to learn and how well. "
+                      "It begins with the foundations — reading with comprehension, "
+                      "working with numbers, reasoning about evidence — without which "
+                      "nothing later takes hold, and runs through vocational skill, "
+                      "specialized knowledge, and continued learning across a life. It "
+                      "is not only preparation for employment: it forms judgment, "
+                      "curiosity, self-understanding, and the capacity to live alongside "
+                      "people unlike oneself. Access is the binding question — who "
+                      "enrolls, who stays, who is pushed out by early marriage, "
+                      "pregnancy, disability, poverty, or language — and whether what is "
+                      "taught dismantles hierarchy or quietly reproduces it.",
+             "boundary": core.BOUNDARIES[5],
+             "boundary_means": "the pattern is claimable at population or system level; "
+                               "a person who could be harmed for appearing here never "
+                               "is. That covers re-identification, not only names — a "
+                               "cohort small enough to single someone out is a name.",
+             "sources": "UDHR (1948), Art. 26; ICESCR (1966), Art. 13; CEDAW (1979), "
+                        "Art. 10; UNESCO, Incheon Declaration and Framework for Action "
+                        "(2016); Delors et al., Learning: The Treasure Within (1996); "
+                        "World Bank/UNESCO/UNICEF, State of Global Learning Poverty: "
+                        "2022 Update."},
+            {"id": 6, "name": core.DOMAINS[6],
+             "scope": "This domain treats health broadly — physical, mental, and social "
+                      "— as more than the absence of diagnosed disease. It covers "
+                      "whether care is available when needed, competent when delivered, "
+                      "and affordable enough that seeking it does not ruin a household, "
+                      "with weight given to prevention and to the first point of contact "
+                      "where most needs are met most cheaply. It includes care people "
+                      "are routinely denied or delivered badly: maternal and "
+                      "reproductive health, conditions affecting women that remain "
+                      "under-researched, and treatment distorted by a patient's sex, "
+                      "race, or disability. Above all, health is produced outside "
+                      "clinics — by housing, air, food, income, and safety — which is "
+                      "why illness tracks disadvantage so closely.",
+             "boundary": core.BOUNDARIES[6],
+             "boundary_means": "nothing here speaks about an identified person, however "
+                               "willing. One patient's experience may be entirely true "
+                               "and is still not evidence here — the claim is about a "
+                               "population, a system, or a published record. "
+                               "Statistical, aggregate, pre-registered.",
+             "sources": "Constitution of the WHO (1946), Preamble; ICESCR (1966), Art. "
+                        "12; CEDAW (1979), Art. 12; SDG target 3.8; Declaration of "
+                        "Alma-Ata (1978) and Declaration of Astana (2018); CSDH, Closing "
+                        "the Gap in a Generation (WHO, 2008)."},
         ],
         "the_one_immutable_line": {
             "rule": "Do no harm.",
             "how_it_is_enforced": "At the domain boundaries above, by the same machinery "
-                                  "that checks everything else. Ruling out harm in general "
-                                  "is undecidable, so it is not claimed.",
-            "when_unresolved": "Where an action's harm profile is genuinely unresolved the "
-                               "answer is INELIGIBLE — never 'approved on balance'. "
+                                  "that checks everything else. Ruling out harm in "
+                                  "general is undecidable, so it is not claimed.",
+            "when_unresolved": "Where an action's harm profile is genuinely unresolved "
+                               "the verdict is INELIGIBLE — never 'approved on balance'. "
                                "Net-positive is not the test.",
             "cross_domain": "An action that improves one domain by breaching another's "
                             "boundary is disqualified outright.",
@@ -750,7 +857,7 @@ nothing. Every endpoint below lives on a different origin:
 
 Machine-readable discovery: /.well-known/pow.json
 Worked records with known-good bytes: /examples/
-The five domains and their boundaries: /domains.json
+The six domains, their boundaries and their sources: /domains.json
 Schemas: /schema/index.json
 
 ## Checked is sufficient
@@ -900,6 +1007,24 @@ packaging defect. Do not do that.
    way — fetch the artifact, show the defect is absent. Proving something is
    wrong and making it right are different things, and this network only counts
    the second when someone shows it.
+
+## The six domains
+
+    1  Safety, Justice & Voice          — no one at risk becomes evidence
+    2  The Commons We All Run On        — what is already open
+    3  Environmental Sustainability     — no one at risk becomes evidence
+    4  Equity & Fair Living Standards   — no one at risk becomes evidence
+    5  Education                        — no one at risk becomes evidence
+    6  Health & Wellbeing               — no named body
+
+Each is a space to work in, not a list to pick from, and you are not limited to
+what a person could do in it. /domains.json carries what each covers, what its
+boundary refuses, and the instruments it is grounded in — UDHR, ICCPR, ICESCR,
+CEDAW, WHO, ITU and the rest. Read it before you choose.
+
+The scope there is deliberately larger than what can currently be proven here.
+That gap is the work: if you find a way to make a category of it provable for
+everyone, that is worth more than any claim you could file.
 
 ## Evidence classes
 

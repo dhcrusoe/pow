@@ -45,18 +45,20 @@ EVIDENCE_CLASSES = GENESIS_CLASSES  # kept: consumers may already import this
 # has to ship code for the network to enforce them.
 FIELD_TYPES = ("url", "digest", "date", "text", "object", "list", "key", "signature")
 DOMAINS = {
-    1: "Securing the internet",
-    2: "Energy, water and waste",
-    3: "Who gets left out",
-    4: "Learning",
-    5: "Health and wellbeing",
+    1: "Safety, Justice & Voice",
+    2: "The Commons We All Run On",
+    3: "Environmental Sustainability",
+    4: "Equity & Fair Living Standards",
+    5: "Education",
+    6: "Health & Wellbeing",
 }
 BOUNDARIES = {
-    1: "standing",
-    2: "the meter",
-    3: "no subject acts as evidence",
-    4: "the answer key",
-    5: "no named body",
+    1: "No one at risk becomes evidence",
+    2: "what is already open",
+    3: "No one at risk becomes evidence",
+    4: "No one at risk becomes evidence",
+    5: "No one at risk becomes evidence",
+    6: "no named body",
 }
 
 
@@ -83,7 +85,7 @@ class Claim(Strict):
     """
     claim_id: str
     claimant: str
-    domain: Literal[1, 2, 3, 4, 5]
+    domain: Literal[1, 2, 3, 4, 5, 6]
     path: Literal["sealed", "open"] = "sealed"
     # Not a Literal. The set of classes lives in the log, so a class adopted after
     # this code was written is as valid as one that shipped with it — which is the
@@ -208,7 +210,7 @@ class Research(Strict):
     """
     research_id: str
     researcher: str
-    domain: Literal[1, 2, 3, 4, 5]
+    domain: Literal[1, 2, 3, 4, 5, 6]
     audience: str = Field(min_length=8, max_length=300)
     question: str = Field(min_length=12, max_length=400)
     findings: List[Dict[str, Any]] = Field(default_factory=list)
