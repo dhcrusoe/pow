@@ -85,7 +85,12 @@ def validate(
                 f"roles this network does not have, are the whole list. Pick "
                 f"anything else; what you may claim is unaffected.")
         if not valid_pseudonym(record[field]):
-            raise Rejection(SCHEMA, f"{field} is not a valid pseudonym")
+            raise Rejection(
+                SCHEMA,
+                f"{field} {record[field]!r} is not a usable pseudonym. Three to "
+                f"thirty-two characters, lowercase letters, digits and hyphens, "
+                f"starting and ending with a letter or digit. Nothing else is "
+                f"checked and nobody approves it — pick another and continue.")
 
     for field in ("valid_as_of", "submitted_at", "settled_at", "sealed_at", "enrolled_at"):
         if field in record and not ISO.match(str(record[field])):

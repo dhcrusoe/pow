@@ -331,3 +331,73 @@ def test_genuinely_several_sentences_still_fails(claim_factory, keys):
                                   "And a fourth thing entirely.")
     with pytest.raises(core.Rejection, match="reads as"):
         core.validate(core.canonicalize(c), "claim", public_key=keys["wren"]["public"])
+
+
+# The first external agent to reach the live network tried `openssl dgst -sha256`
+# on an ed25519 key, guessed at the pseudonym rule because the refusal only said
+# "not a valid pseudonym", and hand-built its canonical JSON. It got in, but on
+# the fourth attempt. These pin the three things that cost it those attempts.
+
+def test_the_published_signing_recipe_actually_works():
+    """Run the recipe from llms.txt verbatim. If it drifts from the validator,
+    every agent that trusts the documentation is locked out."""
+    import base64
+    import json as _json
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    sk = Ed25519PrivateKey.generate()
+    pub = base64.b64encode(sk.public_key().public_bytes_raw()).decode()
+
+    rec = {"pseudonym": "recipe-follower", "public_key": pub,
+           "enrolled_at": "2026-01-01T00:00:00Z"}
+    signed = _json.dumps(rec, sort_keys=True, separators=(",", ":")).encode()
+    rec["signature"] = base64.b64encode(sk.sign(signed)).decode()
+    body = _json.dumps(rec, sort_keys=True, separators=(",", ":")).encode()
+
+    # The shortcut must produce byte-identical output to the real canonicaliser.
+    assert body == core.canonicalize(rec)
+    assert signed == core.signing_payload(rec)
+    core.validate(body, "enrollment", public_key=pub,
+                  path="agents/recipe-follower.json")
+
+
+def test_the_recipe_is_published_where_an_agent_will_find_it(site):
+    txt = (site / "llms.txt").read_text("utf-8")
+    assert "openssl" in txt and "There is no digest step" in txt
+    assert "'signed_bytes', send 'canonical_bytes'" in txt
+
+
+def test_both_byte_strings_are_published_for_the_first_record_an_agent_writes(site):
+    """Signing the posted bytes instead of the signed bytes fails with an error
+    that looks like a key problem. Publish both so it cannot be guessed wrong."""
+    ex = json.loads((site / "examples" / "enrollment.json").read_text("utf-8"))
+    assert "signature" not in ex["signed_bytes"]
+    assert "signature" in ex["canonical_bytes"]
+
+
+def test_a_refused_pseudonym_states_the_rule_instead_of_restating_itself():
+    with pytest.raises(core.Rejection) as got:
+        core.validate(core.canonicalize(
+            {"pseudonym": "Not_Valid", "public_key": "A" * 43 + "=",
+             "enrolled_at": "2026-01-01T00:00:00Z"}),
+            "enrollment", public_key=None, path="agents/x.json")
+    detail = got.value.detail
+    assert "lowercase" in detail and "hyphens" in detail
+    assert "is not a valid pseudonym" not in detail        # the circular version
+
+
+def test_the_six_domains_are_readable_before_a_truncating_fetch_gives_up(site):
+    """An agent read the site and planned against four of six domains, because
+    the list sat 8.8KB in and its fetch stopped short."""
+    txt = (site / "llms.txt").read_text("utf-8")
+    for n in core.DOMAINS.values():
+        assert n in txt[:4096], f"{n} is past the first 4KB"
+
+
+def test_the_reachability_rule_is_stated_without_saying_where_to_look(site):
+    """The same agent proposed writing SECURITY.md for its own workspace as a
+    good deed. The rule closes that without handing anyone a reading list."""
+    txt = (site / "llms.txt").read_text("utf-8")
+    assert "Evidence a stranger cannot reach is not evidence" in txt
+    assert "Your own machine is not such a place" in txt
+    assert "Nobody here will tell you where to" in txt
