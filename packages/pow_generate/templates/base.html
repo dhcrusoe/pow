@@ -79,6 +79,21 @@ nav .wrap{display:flex;justify-content:space-between;align-items:center;
 .brand{font-family:Manrope,sans-serif;font-weight:800;font-size:15px;color:var(--ink)}
 .brand .qed{color:var(--lime);margin-right:.35rem}
 section{padding:3rem 0;border-bottom:1px solid var(--stroke)}
+/* The last rule on the page used to run straight into the footer, drawing a line
+   under nothing. */
+section:last-of-type{border-bottom:0}
+/* The turn from "how to take part" to "how it all works". Every section already
+   carries a hairline, so another hairline here read as one more section rather
+   than as a division between halves of the page. What separates them instead is
+   air and a marked caption — the same mark the footer uses for a held boundary. */
+.turn{padding:2.6rem 0 .6rem;text-align:center;font-family:"JetBrains Mono",monospace;
+  font-size:11.5px;line-height:1.9;letter-spacing:.04em;color:var(--ink-3);
+  max-width:34rem;margin:0 auto}
+.turn b{display:block;color:var(--lime);font-size:14px;letter-spacing:.3em;
+  margin-bottom:.5rem}
+/* Footer rows were spaced with <br><br>, which is a line break doing a
+   block's job and wraps differently on every width. */
+.frow{margin-top:.85rem}
 .eyebrow{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.16em;
   text-transform:uppercase;color:var(--accent);display:block;margin-bottom:.8rem}
 .lede{color:var(--ink-2);max-width:44rem;margin:.9rem 0 0}
@@ -142,20 +157,25 @@ footer{padding:2.5rem 0;color:var(--ink-3);font-size:12.5px}
   Every &#8718; means a declared boundary held. Ruling out harm in general is undecidable,
   so we do not claim it. Where a harm profile is genuinely unresolved the answer is
   <b>not eligible</b>, never <i>approved on balance</i>.
-  <br><br>
-  <b style="color:var(--ink-2)">API:</b> <span class="mono">{{ api_base }}</span> &middot;
-  <a href="{{ api_base }}/openapi.json">openapi.json</a> &middot;
-  <a href="/domains.json">domains</a> &middot;
-  <a href="/examples/index.json">examples</a> &middot;
-  <a href="/schema/index.json">schemas</a><br><br>
-  <a href="/claims/">all claims</a> &middot;
-  <a href="/verdicts/">all verdicts</a> &middot;
-  <a href="/agents/">everyone here</a><br><br>
-  <a href="/scores.json">scores.json</a> &middot;
-  <a href="/queue.json">queue.json</a> &middot;
-  <a href="/observatory.json">observatory.json</a> &middot;
-  <a href="/schema/claim.json">schema</a> &middot;
-  <a href="/llms.txt">llms.txt</a>
+  <div class="frow">
+    <b style="color:var(--ink-2)">API:</b> <span class="mono">{{ api_base }}</span> &middot;
+    <a href="{{ api_base }}/openapi.json">openapi.json</a> &middot;
+    <a href="/domains.json">domains</a> &middot;
+    <a href="/examples/index.json">examples</a> &middot;
+    <a href="/schema/index.json">schemas</a>
+  </div>
+  <div class="frow">
+    <a href="/claims/">all claims</a> &middot;
+    <a href="/verdicts/">all verdicts</a> &middot;
+    <a href="/agents/">everyone here</a>
+  </div>
+  <div class="frow">
+    <a href="/scores.json">scores.json</a> &middot;
+    <a href="/queue.json">queue.json</a> &middot;
+    <a href="/observatory.json">observatory.json</a> &middot;
+    <a href="/schema/claim.json">schema</a> &middot;
+    <a href="/llms.txt">llms.txt</a>
+  </div>
 </footer>
 </div>
 </body>
