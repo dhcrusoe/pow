@@ -7,9 +7,19 @@ for certainty. What must not change is that score stays uninflatable by opinion.
 """
 from __future__ import annotations
 
+import json
+
 import pytest
 
 import pow_core as core
+from pow_generate import build
+
+
+@pytest.fixture
+def site(log, tmp_path):
+    out = tmp_path / "site"
+    build(log, out, api_base="https://api.invalid")
+    return out
 
 
 def V(cid, who, verdict="PASS", conf=None, at="2026-09-01T10:00:00Z", fraud=False):
@@ -235,3 +245,54 @@ def test_the_same_action_twice_scores_once(open_claim):
     vs = ([V(a["claim_id"], w) for w in ("slate", "chalk", "keel")]
           + [V(b["claim_id"], w) for w in ("slate", "chalk", "keel")])
     assert core.score([a, b], vs)["wren"] == 10
+
+
+# An agent did real outward-facing work, then could not file it. Three things
+# stopped it, and none of them were about the work: a field name it had to guess,
+# a default that contradicted the advice, and no example of the path it was told
+# to prefer.
+
+def test_an_unknown_field_names_the_fields_that_exist():
+    """'timestamp: Extra inputs are not permitted' names the wrong field and no
+    right one. The agent guessed again."""
+    rec = {"claim_id": "sha256:" + "0" * 64, "claimant": "someone", "domain": 1,
+           "proposition": "a proposition long enough to pass", "boundary": "none",
+           "valid_as_of": "2026-01-01", "submitted_at": "2026-01-01",
+           "timestamp": "2026-01-01", "signature": "x"}
+    with pytest.raises(core.Rejection) as got:
+        core.validate(core.canonicalize(rec), "claim", public_key=None,
+                      path="claims/x.json")
+    detail = got.value.detail
+    assert "submitted_at" in detail            # the field it actually wanted
+    assert "Extra inputs are not permitted" not in detail
+
+
+def test_the_default_path_is_the_one_the_documentation_recommends():
+    """llms.txt says take the open path unless the sealed one genuinely fits.
+    The default was sealed, so an agent that omitted the field got the
+    restrictive path and a refusal."""
+    assert core.records.Claim.model_fields["path"].default == "open"
+
+
+def test_an_open_shaped_claim_marked_sealed_is_told_exactly_what_to_change():
+    rec = {"claim_id": "sha256:" + "0" * 64, "claimant": "someone", "domain": 1,
+           "path": "sealed", "proposition": "a proposition long enough to pass",
+           "action": "did the thing", "evidence": [{"url": "https://x.invalid"}],
+           "how_to_check": "fetch it", "boundary": "none",
+           "valid_as_of": "2026-01-01", "submitted_at": "2026-01-01", "signature": "x"}
+    with pytest.raises(core.Rejection) as got:
+        core.validate(core.canonicalize(rec), "claim", public_key=None,
+                      path="claims/x.json")
+    assert '"path": "open"' in got.value.detail
+    assert "/examples/open-claim.json" in got.value.detail
+
+
+def test_the_open_path_has_a_worked_example_that_validates(site):
+    """Every published example was sealed, on a network that recommends open."""
+    ex = json.loads((site / "examples" / "open-claim.json").read_text("utf-8"))
+    rec = ex["record"]
+    assert rec["path"] == "open"
+    assert "evidence_class" not in rec and not rec.get("manifest")
+    core.validate(core.canonicalize(rec), "claim", public_key=None,
+                  path=core.path_for(rec, "claim"))
+    assert ex["signed_bytes"] and ex["canonical_bytes"]

@@ -12,6 +12,7 @@ verified, and there is nothing here for anyone to withhold.
 from __future__ import annotations
 
 import re
+from difflib import get_close_matches
 from typing import Mapping, Optional, Tuple
 
 from pydantic import ValidationError
@@ -70,7 +71,18 @@ def validate(
     except ValidationError as exc:
         first = exc.errors()[0]
         loc = ".".join(str(p) for p in first.get("loc", ())) or "record"
-        raise Rejection(SCHEMA, f"{loc}: {first.get('msg', 'invalid')}") from exc
+        msg = first.get("msg", "invalid")
+        # "Extra inputs are not permitted" names the field that is wrong and not
+        # one that is right. An agent that wrote 'timestamp' for 'submitted_at'
+        # learns nothing from it and guesses again.
+        if first.get("type") == "extra_forbidden":
+            allowed = sorted(model.model_fields)
+            near = get_close_matches(str(loc), allowed, n=1, cutoff=0.6)
+            msg = (f"there is no {loc!r} field on a {kind}."
+                   + (f" Did you mean {near[0]!r}?" if near else "")
+                   + f" The fields are: {', '.join(allowed)}.")
+            raise Rejection(SCHEMA, msg) from exc
+        raise Rejection(SCHEMA, f"{loc}: {msg}") from exc
 
     for field in ("claimant", "verifier", "sealer", "pseudonym"):
         if field not in record:
@@ -152,9 +164,18 @@ def _claim_rules(record: Mapping, classes: Optional[Mapping] = None) -> None:
 
     manifest = record.get("manifest")
     if not isinstance(manifest, dict) or not manifest:
-        raise Rejection(SCHEMA, "a sealed claim needs a manifest. If your work does not "
-                                "fit a published procedure, use path 'open' instead — "
-                                "that is what it is for.")
+        looks_open = any(record.get(f) for f in ("action", "evidence", "how_to_check"))
+        raise Rejection(
+            SCHEMA,
+            ("you have described what you did and what exists to check it, which is "
+             "an open claim, but this record says path 'sealed'. Set \"path\": \"open\" "
+             "and it goes through. "
+             if looks_open else
+             "a sealed claim needs a manifest. If your work does not fit a published "
+             "procedure, use path 'open' instead — that is what it is for. ")
+            + "The open path is the default and the usual case; sealed is for work "
+              "that fits a published procedure exactly. A worked open claim with its "
+              "exact bytes is at /examples/open-claim.json.")
     ec = record.get("evidence_class")
     if ec is None:
         raise Rejection(SCHEMA, "a sealed claim names the evidence class whose procedure "

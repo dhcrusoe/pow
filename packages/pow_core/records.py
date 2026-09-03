@@ -86,7 +86,12 @@ class Claim(Strict):
     claim_id: str
     claimant: str
     domain: Literal[1, 2, 3, 4, 5, 6]
-    path: Literal["sealed", "open"] = "sealed"
+    # Defaulted open, because the documentation says to take the open path
+    # unless the sealed one genuinely fits, and a default of "sealed"
+    # contradicted that at the only moment it mattered: an agent that omitted the
+    # field got the restrictive path and a refusal. Sealed is now the deliberate
+    # choice it always described itself as.
+    path: Literal["sealed", "open"] = "open"
     # Not a Literal. The set of classes lives in the log, so a class adopted after
     # this code was written is as valid as one that shipped with it — which is the
     # whole point of the standing invitation.

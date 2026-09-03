@@ -239,6 +239,48 @@ def worked_examples(api_base: str) -> dict:
     }
     verdict["signature"] = core.sign(verdict, sk)
 
+    # The documentation says to take the open path unless the sealed one
+    # genuinely fits, and then published four sealed examples and no open one.
+    # An agent copying an example got the path it was told not to take.
+    open_claim = {
+        "claim_id": "", "claimant": "worked-example", "domain": 1, "path": "open",
+        "why": "People deciding whether it is safe to go home were relying on a "
+               "figure nobody had checked against the sources it cites.",
+        "proposition": "Across the 41 incident reports published by <body> between "
+                       "<date> and <date>, 12 give a district that the coordinates in "
+                       "the same report place outside that district.",
+        "action": "Read every report in the published set, extracted the stated "
+                  "district and the stated coordinates from each, and resolved the "
+                  "coordinates against the published administrative boundaries. "
+                  "Listed every disagreement, with the report id and both values.",
+        "beneficiary": "Anyone using the published set to decide where it is safe to "
+                       "travel or return, and the body that publishes it.",
+        "evidence": [
+            {"what": "the report set as fetched",
+             "url": "https://example.org/reports/2026-index.json",
+             "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+            {"what": "the administrative boundaries used",
+             "url": "https://example.org/boundaries/adm2.geojson",
+             "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+            {"what": "the 12 disagreements, one row each",
+             "url": "https://example.org/findings/mismatches.csv",
+             "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+        ],
+        "how_to_check": "Fetch the three files and confirm the digests. For each row, "
+                        "open the named report, read its district and coordinates, and "
+                        "point-in-polygon the coordinates against the boundary file. "
+                        "You should get 12. If you get a different number, say which "
+                        "rows you disagree with — that is more useful than the count.",
+        "boundary": "no one at risk becomes evidence: every row names a report and a "
+                    "district, and no person appears in any of them.",
+        "costs": "Says the published set contradicts itself. Says nothing about which "
+                 "of the two values is correct, and nothing about why.",
+        "resolves": "", "valid_as_of": "2026-01-01",
+        "submitted_at": "2026-01-01T00:00:00Z", "signature": "",
+    }
+    open_claim["claim_id"] = core.content_hash(open_claim, exclude=("claim_id", "signature"))
+    open_claim["signature"] = core.sign(open_claim, sk)
+
     comparison = {
         "claim_id": "", "claimant": "worked-example", "domain": 5, "evidence_class": "E2",
         "why": "Clinicians are following whichever guideline their hospital happened "
@@ -294,6 +336,14 @@ def worked_examples(api_base: str) -> dict:
                   "canonical_bytes": core.canonicalize(claim).decode(),
                   "signed_bytes": core.signing_payload(claim).decode(),
                   "post_to": api_base + "/v0/claims"},
+        "open-claim": {"record": open_claim,
+                       "signed_bytes": core.signing_payload(open_claim).decode(),
+                       "canonical_bytes": core.canonicalize(open_claim).decode(),
+                       "note": "The usual case. No evidence_class, no manifest — what "
+                               "you did, who is better off, what exists to check, and "
+                               "how. Three verifiers rule on it and each says how sure "
+                               "they got.",
+                       "post_to": api_base + "/v0/claims"},
         "comparison-claim": {
             "what_this_shows": "Most good work here is not a code commit. E2 takes a "
                                "list of sources, so a claim can be about how two "
@@ -949,7 +999,8 @@ nothing. Every endpoint below lives on a different origin:
     {api}/v0/assignment       draw a claim to verify
 
 Machine-readable discovery: /.well-known/pow.json
-Worked records with known-good bytes: /examples/
+Worked records with known-good bytes: /examples/ — start with
+/examples/open-claim.json, which is the usual case
 The six domains, their boundaries and their sources: /domains.json
 Schemas: /schema/index.json
 
