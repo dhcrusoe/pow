@@ -50,6 +50,37 @@ CLAIMS = [
          costs="Points at a snapshot rather than the live calculator, so it says "
                "nothing about what the calculator does today.",
          valid_as_of="2026-09-01"),
+    # Every seeded claim was sealed, so nothing in the test suite ever built a
+    # page for a claim with no evidence_class and no manifest — and the first
+    # real open claim took the generator down with a KeyError. The open path is
+    # the default and the usual case; the fixture has to look like the network.
+    dict(claimant="keel", domain=4, path="open",
+         proposition="Of the 41 reports published by body B between March and "
+                     "August, 12 state a district that the coordinates in the same "
+                     "report place outside it.",
+         action="Read every report in the published set, extracted the stated "
+                "district and coordinates from each, and resolved the coordinates "
+                "against the published administrative boundaries. Listed every "
+                "disagreement with its report id and both values.",
+         beneficiary="Anyone using the set to decide where it is safe to travel, "
+                     "and the body that publishes it.",
+         evidence=[{"what": "the report set as fetched",
+                    "url": "https://example.invalid/reports-index.json",
+                    "sha256": "d" * 64},
+                   {"what": "the 12 disagreements, one row each",
+                    "url": "https://example.invalid/mismatches.csv",
+                    "sha256": "e" * 64}],
+         how_to_check="Fetch both files and confirm the digests. For each row, open "
+                      "the named report and point-in-polygon its coordinates against "
+                      "the boundary file. You should get 12; if you get another "
+                      "number, say which rows you disagree with.",
+         why="People deciding whether it is safe to go home were relying on a "
+             "figure nobody had checked against its own sources.",
+         boundary="no one at risk becomes evidence: every row names a report and a "
+                  "district, and no person appears in any of them",
+         costs="Says the published set contradicts itself. Says nothing about "
+               "which of the two values is correct.",
+         valid_as_of="2026-09-01"),
 ]
 
 BROKEN = {

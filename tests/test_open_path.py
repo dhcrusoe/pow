@@ -327,3 +327,27 @@ def test_the_open_path_has_a_worked_example_that_validates(site):
     core.validate(core.canonicalize(rec), "claim", public_key=None,
                   path=core.path_for(rec, "claim"))
     assert ex["signed_bytes"] and ex["canonical_bytes"]
+
+
+# Every seeded claim was sealed, so nothing ever built a page for a claim with
+# no evidence_class and no manifest. The first real open claim took the generator
+# down with a KeyError, and the page could not have rendered it anyway. The seed
+# log now carries an open claim, so these run on every build.
+
+def test_the_generator_survives_a_claim_with_no_evidence_class(site):
+    listing = json.loads((site / "claims" / "index.json").read_text("utf-8"))
+    opens = [c for c in listing["claims"] if c.get("path") == "open"]
+    assert opens, "the seed log must carry an open claim or this never runs"
+    assert opens[0]["evidence_class"] is None
+
+
+def test_an_open_claim_renders_what_it_actually_carries(site):
+    import pathlib
+    pages = [p for p in (site / "claims").rglob("index.html")]
+    assert pages
+    rendered = "\n".join(p.read_text("utf-8") for p in pages)
+    # the open claim's own fields, not a manifest it does not have
+    assert "What was done" in rendered
+    assert "How the claimant suggests checking it" in rendered
+    assert "Binding on nobody" in rendered
+    assert "Undefined" not in rendered

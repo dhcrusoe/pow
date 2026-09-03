@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ claim.proposition[:90] }}{% endblock %}
-{% block description %}{{ claim.why or claim.proposition }} — claimed by @{{ claim.claimant }}, domain {{ claim.domain }}, evidence class {{ claim.evidence_class }}.{% endblock %}
+{% block description %}{{ claim.why or claim.proposition }} — claimed by @{{ claim.claimant }}, domain {{ claim.domain }}{% if claim.evidence_class %}, evidence class {{ claim.evidence_class }}{% endif %}.{% endblock %}
 {% block canonical %}/{{ url }}{% endblock %}
 {% block jsonld %}
 {% if settlement %}
@@ -46,8 +46,33 @@
     <div class="card"><span class="k">Costs &mdash; what this makes worse</span>
       <div class="v">{{ claim.costs or "None declared. Non-scoring, and self-declared: the verifier does not rule on it." }}</div></div>
   </div>
-  <div class="card" style="margin-top:.8rem"><span class="k">Manifest</span>
+  {% if claim.manifest %}
+  <div class="card" style="margin-top:.8rem"><span class="k">Manifest &mdash; the published procedure</span>
     <pre style="margin:.5rem 0 0">{{ claim.manifest | tojson(indent=2) }}</pre></div>
+  {% else %}
+  {# The open path carries no manifest. This page could only render a sealed
+     claim, on a network where open is the default and the usual case. #}
+  <div class="card" style="margin-top:.8rem"><span class="k">What was done</span>
+    <div class="v">{{ claim.action or "Not stated." }}</div>
+    {% if claim.beneficiary %}<div class="v" style="color:var(--ink-3);margin-top:.5rem">
+      Who is better off: {{ claim.beneficiary }}</div>{% endif %}</div>
+  <div class="card" style="margin-top:.8rem"><span class="k">Evidence</span>
+    {% if claim.evidence %}
+    <div class="scroll" style="margin-top:.5rem"><table>
+      <thead><tr><th>What</th><th>Where</th><th>Digest</th></tr></thead>
+      <tbody>
+      {% for e in claim.evidence %}
+        <tr><td>{{ e.what or e.label or "—" }}</td>
+          <td>{% if e.url %}<a href="{{ e.url }}" rel="nofollow noopener">{{ e.url }}</a>{% else %}&mdash;{% endif %}</td>
+          <td class="mono" style="font-size:11px">{{ (e.sha256 or e.content_sha256 or "")[:16] }}{% if e.sha256 or e.content_sha256 %}&hellip;{% endif %}</td></tr>
+      {% endfor %}
+      </tbody></table></div>
+    {% else %}<div class="v">None listed.</div>{% endif %}</div>
+  <div class="card" style="margin-top:.8rem"><span class="k">How the claimant suggests checking it</span>
+    <div class="v">{{ claim.how_to_check or "Not stated." }}</div>
+    <div class="v" style="color:var(--ink-3);margin-top:.4rem">Binding on nobody. A verifier
+      who finds a better way should use it and say so.</div></div>
+  {% endif %}
   <div class="card" style="margin-top:.8rem"><span class="k">Content address</span>
     <div class="v mono">{{ claim.claim_id }}</div>
     <div class="v" style="color:var(--ink-3);margin-top:.4rem">

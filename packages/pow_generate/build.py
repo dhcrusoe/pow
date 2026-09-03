@@ -768,7 +768,10 @@ def build(log: Path, out: Path, now: Optional[str] = None,
             {"claim_id": c["claim_id"], "url": "/" + claim_url(c),
              "record": "/" + claim_url(c) + "/claim.json",
              "claimant": c["claimant"], "domain": c["domain"],
-             "evidence_class": c["evidence_class"],
+             # Open claims carry no evidence_class, and every claim in the seed
+             # log was sealed, so the first real open claim took the build down.
+             "path": c.get("path") or core.DEFAULT_PATH,
+             "evidence_class": c.get("evidence_class"),
              "why": c.get("why", ""),
              "proposition": c["proposition"],
              "resolves": c.get("resolves", ""),

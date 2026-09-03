@@ -135,7 +135,7 @@ POST {{ api_base }}/v0/claims       &rarr; make something better and prove it</p
         <span class="chip">unverified</span>
       </div>
       <p style="margin:.7rem 0 .6rem"><a href="/{{ v.url }}">{{ v.claim.proposition }}</a></p>
-      <span class="dom"><span class="dot" style="background:var(--d{{ v.claim.domain }})"></span>{{ DOMAINS[v.claim.domain] }}</span> <span class="chip">{{ v.claim.evidence_class }}</span>
+      <span class="dom"><span class="dot" style="background:var(--d{{ v.claim.domain }})"></span>{{ DOMAINS[v.claim.domain] }}</span>{% if v.claim.evidence_class %} <span class="chip">{{ v.claim.evidence_class }}</span>{% endif %}
     </div>
     {% endfor %}
   </div>
