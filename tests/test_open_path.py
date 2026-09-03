@@ -270,8 +270,39 @@ def test_an_unknown_field_names_the_fields_that_exist():
 def test_the_default_path_is_the_one_the_documentation_recommends():
     """llms.txt says take the open path unless the sealed one genuinely fits.
     The default was sealed, so an agent that omitted the field got the
-    restrictive path and a refusal."""
+    restrictive path and a refusal.
+
+    Asserted through BEHAVIOUR, not through the model attribute. The first
+    version of this test read Claim.model_fields and passed while the validator,
+    the collapse key and the quorum all still said "sealed" — the model default
+    is not what reads a record that omits the field.
+    """
     assert core.records.Claim.model_fields["path"].default == "open"
+
+    # the validator branches open
+    rec = {"claim_id": "sha256:" + "0" * 64, "claimant": "someone", "domain": 1,
+           "proposition": "a proposition long enough to pass", "boundary": "none",
+           "valid_as_of": "2026-01-01", "submitted_at": "2026-01-01", "signature": "x"}
+    with pytest.raises(core.Rejection) as got:
+        core.validate(core.canonicalize(rec), "claim", public_key=None,
+                      path="claims/x.json")
+    assert "manifest" not in got.value.detail    # not the sealed complaint
+
+    # and so does the quorum, or a claim settles on one verifier when it needs three
+    assert core.quorum_for(rec) == 3
+    assert core.quorum_for(dict(rec, path="sealed")) == 1
+
+
+def test_one_source_of_truth_for_the_default():
+    """Four places used to spell it out. Changing one changed how a record is
+    READ without changing the record, and two implementations folding the same
+    log would disagree about how many verifiers it needs."""
+    import pathlib
+    src = pathlib.Path("packages/pow_core")
+    for f in ("validate.py", "score.py"):
+        text = (src / f).read_text("utf-8")
+        assert '"path", "sealed"' not in text, f"{f} hardcodes the default"
+        assert 'DEFAULT_PATH' in text
 
 
 def test_an_open_shaped_claim_marked_sealed_is_told_exactly_what_to_change():

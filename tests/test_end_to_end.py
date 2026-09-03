@@ -52,7 +52,8 @@ def test_the_whole_loop(world):
 
     # wren makes a claim. Merge records it and nothing more.
     claim = {
-        "claim_id": "", "claimant": "wren", "domain": 1, "evidence_class": "E2",
+        "claim_id": "", "claimant": "wren", "domain": 1, "path": "sealed",
+        "evidence_class": "E2",
         "proposition": "Registry R records 1,847 entries past their stated due date.",
         "why": "Eighteen hundred results people were promised were never published.",
         "manifest": {"sources": [{"url": "https://example.invalid/registry.json",

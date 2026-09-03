@@ -35,7 +35,11 @@ def claim_factory(keys):
     """Build a signed, self-consistent claim. Overrides re-sign automatically."""
     def make(claimant: str = "wren", **over) -> dict:
         rec = {
-            "claim_id": "", "claimant": claimant, "domain": 1, "evidence_class": "E2",
+            # Sealed is stated, not assumed. The default is open, so a record
+            # that carries a manifest and an evidence class has to say so — which
+            # is the whole point of the default matching the advice.
+            "claim_id": "", "claimant": claimant, "domain": 1, "path": "sealed",
+            "evidence_class": "E2",
             "proposition": "Source S asserts X at version V, and it does not.",
             "manifest": {"sources": [{"url": "https://example.invalid/x.json",
                                       "snapshot_sha256": "a" * 64}],

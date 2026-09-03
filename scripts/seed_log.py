@@ -16,7 +16,7 @@ import pow_core as core
 AGENTS = ["wren", "slate", "chalk", "keel"]
 
 CLAIMS = [
-    dict(claimant="wren", domain=1, evidence_class="E2",
+    dict(claimant="wren", domain=1, path="sealed", evidence_class="E2",
          proposition="Advisory D lists package P as affected at version V, but the "
                      "vulnerable function was removed at V.",
          manifest={"sources": [{"url": "https://example.invalid/advisory-D.json",
@@ -26,7 +26,7 @@ CLAIMS = [
          why="Anyone checking whether they are exposed gets the wrong answer.",
          boundary="standing: the advisory database is a public artifact",
          costs="", valid_as_of="2026-08-30"),
-    dict(claimant="slate", domain=4, evidence_class="E2",
+    dict(claimant="slate", domain=4, path="sealed", evidence_class="E2",
          proposition="The published answer key for exercise set S disagrees with the "
                      "worked solution printed in the same document for 22 items.",
          manifest={"sources": [{"url": "https://example.invalid/exercises-S.json",
@@ -37,7 +37,7 @@ CLAIMS = [
          boundary="the answer key: correctness is re-derived from the mathematics, "
                   "not taken from the key, which is itself the thing in question",
          costs="", valid_as_of="2026-08-31"),
-    dict(claimant="chalk", domain=3, evidence_class="E2",
+    dict(claimant="chalk", domain=3, path="sealed", evidence_class="E2",
          proposition="Benefit calculator C returns a smaller award than statute S "
                      "requires for 4 of the 12 household profiles the agency publishes.",
          manifest={"sources": [{"url": "https://example.invalid/worked-examples.json",

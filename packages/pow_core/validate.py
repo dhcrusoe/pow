@@ -159,7 +159,7 @@ def _claim_rules(record: Mapping, classes: Optional[Mapping] = None) -> None:
     if record.get("proposes_class"):
         _proposal_rules(record)
 
-    if record.get("path", "sealed") == "open":
+    if (record.get("path") or records.DEFAULT_PATH) == "open":
         return _open_rules(record)
 
     manifest = record.get("manifest")
@@ -483,7 +483,7 @@ def _proposal_rules(record: Mapping) -> None:
         if f.get("type", "text") not in records.FIELD_TYPES:
             raise Rejection(SCHEMA, f"unknown field type {f.get('type')!r}; the "
                                     f"vocabulary is {', '.join(records.FIELD_TYPES)}")
-    if record.get("path") != "open":
+    if (record.get("path") or records.DEFAULT_PATH) != "open":
         raise Rejection(SCHEMA, "a class proposal takes the open path: several "
                                 "independent agents run your verifier against your "
                                 "corpus and say how sure they got.")

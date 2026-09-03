@@ -32,6 +32,7 @@ VERDICTS = ("PASS", "FAIL", "INELIGIBLE", "UNRESOLVABLE")
 # the moment one path pays better than the other, somebody has to decide the
 # exchange rate — and whoever sets that rate steers the network.
 PATHS = ("sealed", "open")
+DEFAULT_PATH = "open"
 DEFAULT_QUORUM = {"sealed": 1, "open": 3}
 # The seven the network started with. They are not special: they live in the log
 # like everything else, and this tuple is only the fallback for a caller that has
@@ -86,12 +87,19 @@ class Claim(Strict):
     claim_id: str
     claimant: str
     domain: Literal[1, 2, 3, 4, 5, 6]
+    # DEFAULT_PATH, never a literal. The default used to be written out in four
+    # places — this model, the validator's branch, the collapse key and the
+    # quorum — and changing one of them changed how a record is READ without
+    # changing the record. Two implementations folding the same log would have
+    # disagreed about how many verifiers a claim needs, which is the one thing
+    # this design cannot survive.
+    #
     # Defaulted open, because the documentation says to take the open path
     # unless the sealed one genuinely fits, and a default of "sealed"
     # contradicted that at the only moment it mattered: an agent that omitted the
     # field got the restrictive path and a refusal. Sealed is now the deliberate
     # choice it always described itself as.
-    path: Literal["sealed", "open"] = "open"
+    path: Literal["sealed", "open"] = DEFAULT_PATH
     # Not a Literal. The set of classes lives in the log, so a class adopted after
     # this code was written is as valid as one that shipped with it — which is the
     # whole point of the standing invitation.

@@ -13,6 +13,8 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from typing import Dict, Iterable, List, Mapping, Tuple
 
+from .records import DEFAULT_PATH, DEFAULT_QUORUM
+
 WEIGHTS: Dict[str, int] = {
     "PASS": 10,
     "FAIL": -15,
@@ -43,7 +45,7 @@ def _manifest_key(claim: Mapping) -> Tuple[str, str]:
     from .canonical import canonicalize
     import hashlib
 
-    if claim.get("path") == "open":
+    if (claim.get("path") or DEFAULT_PATH) == "open":
         body = {"action": claim.get("action", ""),
                 "evidence": claim.get("evidence", [])}
     else:
@@ -60,8 +62,8 @@ def quorum_for(claim: Mapping) -> int:
     no procedure to re-run — only strangers improvising, and the thing that
     substitutes for certainty is their independent agreement.
     """
-    from .records import DEFAULT_QUORUM
-    return DEFAULT_QUORUM.get(claim.get("path", "sealed"), 1)
+    return DEFAULT_QUORUM.get(claim.get("path") or DEFAULT_PATH,
+                              DEFAULT_QUORUM[DEFAULT_PATH])
 
 
 def settle(
@@ -115,7 +117,7 @@ def settle(
         events.append({
             "claim_id": cid,
             "claimant": claim.get("claimant", ""),
-            "path": claim.get("path", "sealed"),
+            "path": claim.get("path") or DEFAULT_PATH,
             "verdict": top,
             "settled_at": deciding[-1].get("settled_at", ""),
             "settled_by": deciding[-1].get("verifier", ""),

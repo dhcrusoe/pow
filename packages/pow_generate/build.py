@@ -676,7 +676,7 @@ def build(log: Path, out: Path, now: Optional[str] = None,
                                 if sum(coverage(c)[1:]) < coverage(c)[0]),
             "unsettled": sorted(c["claim_id"] for c in unsettled),
             "detail": {
-                c["claim_id"]: {"path": c.get("path", "sealed"),
+                c["claim_id"]: {"path": c.get("path") or core.DEFAULT_PATH,
                                 "quorum": coverage(c)[0],
                                 "verdicts_in": coverage(c)[1],
                                 "leases_out": coverage(c)[2]}
