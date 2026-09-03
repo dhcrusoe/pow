@@ -17,6 +17,7 @@ from .identity import (
     sign,
     signing_payload,
     unb64,
+    reserved_pseudonym,
     valid_pseudonym,
     verify,
 )
@@ -49,7 +50,7 @@ __all__ = [
     "canonicalize", "loads", "CanonicalizationError", "Rejection",
     "generate", "sign", "verify", "content_hash", "short", "signing_payload",
     "b64", "unb64", "identity",
-    "valid_pseudonym", "Claim", "Verdict", "Research", "Seal", "Handout", "Enrollment",
+    "reserved_pseudonym", "valid_pseudonym", "Claim", "Verdict", "Research", "Seal", "Handout", "Enrollment",
     "VERDICTS", "EVIDENCE_CLASSES", "GENESIS_CLASSES", "FIELD_TYPES",
     "ClassSpec", "EvidenceClass", "DOMAINS", "BOUNDARIES", "PATHS",
     "DEFAULT_QUORUM", "json_schemas",

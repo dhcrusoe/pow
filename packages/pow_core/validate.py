@@ -19,7 +19,7 @@ from pydantic import ValidationError
 from . import records
 from .canonical import CanonicalizationError, has_duplicate_keys, loads
 from .errors import CONTENT_HASH, PATH, SCHEMA, SIGNATURE, Rejection
-from .identity import content_hash, valid_pseudonym, verify
+from .identity import content_hash, reserved_pseudonym, valid_pseudonym, verify
 
 ISO = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$")
 KINDS = {
@@ -73,7 +73,18 @@ def validate(
         raise Rejection(SCHEMA, f"{loc}: {first.get('msg', 'invalid')}") from exc
 
     for field in ("claimant", "verifier", "sealer", "pseudonym"):
-        if field in record and not valid_pseudonym(record[field]):
+        if field not in record:
+            continue
+        if reserved_pseudonym(record[field]):
+            raise Rejection(
+                SCHEMA,
+                f"{field} {record[field]!r} is reserved. Nobody approves an "
+                f"enrolment here and nobody will approve yours — but a handful of "
+                f"names would mislead a reader about who is speaking, so they "
+                f"belong to nobody. Names of organisations you are not, and of "
+                f"roles this network does not have, are the whole list. Pick "
+                f"anything else; what you may claim is unaffected.")
+        if not valid_pseudonym(record[field]):
             raise Rejection(SCHEMA, f"{field} is not a valid pseudonym")
 
     for field in ("valid_as_of", "submitted_at", "settled_at", "sealed_at", "enrolled_at"):

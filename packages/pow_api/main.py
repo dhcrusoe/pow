@@ -23,6 +23,7 @@ import pow_core as core
 import os
 
 from .backends import from_env, read_plane_from_env
+from .limits import Ceilings, REASON
 
 SITE_BASE = os.environ.get("SITE_BASE", "http://localhost:8080").rstrip("/")
 
@@ -46,6 +47,35 @@ def create_app(backend=None) -> Flask:
     # tolerant of a few seconds' lag — read the plane.
     app.config["READS"] = read_plane_from_env(app.config["BACKEND"]) \
         or app.config["BACKEND"]
+    app.config["CEILINGS"] = Ceilings()
+
+    # request.get_data() reads the whole body into memory before anything looks
+    # at it, so without a cap one POST is a denial of service on a 512MB box.
+    # A record's inline evidence is capped at 262144 bytes; a megabyte leaves
+    # generous room around that and bounds the damage at the socket.
+    app.config["MAX_CONTENT_LENGTH"] = 1048576
+
+    def address() -> str:
+        # Render terminates TLS upstream, so the socket peer is the proxy.
+        fwd = request.headers.get("X-Forwarded-For", "")
+        return (fwd.split(",")[0].strip() or request.remote_addr or "-")
+
+    def over_ceiling(key: str):
+        """None to proceed, or a 429 that says when to come back. An agent told
+        only 'no' retries immediately."""
+        hit = app.config["CEILINGS"].check(key, address())
+        if hit is None:
+            return None
+        scope, retry = hit
+        body = {"error": {"rule": "rate_limited", "detail": REASON[scope],
+                          "retry_after_seconds": retry,
+                          "note": "Writes are capped to protect the single token "
+                                  "every record commits through. Nothing about your "
+                                  "record was wrong; nothing is owed. Reads are not "
+                                  "capped."}}
+        return Response(json.dumps(body, indent=2) + "\n", status=429,
+                        mimetype="application/json",
+                        headers={"Retry-After": str(retry)})
 
     def bad(rej: core.Rejection, status: int = 400) -> Response:
         return Response(
@@ -71,6 +101,10 @@ def create_app(backend=None) -> Flask:
             record = core.parse(raw)
         except core.Rejection as rej:
             return bad(rej)
+
+        refused = over_ceiling(str(record.get(author_field, "")))
+        if refused is not None:
+            return refused
 
         if author_field not in record:
             return bad(core.Rejection(
@@ -111,11 +145,17 @@ def create_app(backend=None) -> Flask:
         except FileExistsError:
             return bad(core.Rejection("duplicate", f"{path} already recorded"), 409)
 
+        # Counted here, not at the door: a rejected record cost the log nothing,
+        # and charging for it would punish an agent for learning the schema.
+        app.config["CEILINGS"].record(str(record.get(author_field, "")), address())
         return jsonify({"recorded": path, "commit": sha, "verified": False}), 201
 
     @app.post("/v0/agents")
     def enroll():
         raw = request.get_data()
+        refused = over_ceiling("")      # no key yet; the address ceiling applies
+        if refused is not None:
+            return refused
         try:
             record = core.parse(raw)
             if not isinstance(record.get("public_key"), str):
@@ -136,6 +176,7 @@ def create_app(backend=None) -> Flask:
             sha = app.config["BACKEND"].put(path, raw, f"enroll: {record['pseudonym']}")
         except FileExistsError:
             return bad(core.Rejection("duplicate", "that pseudonym is already bound"), 409)
+        app.config["CEILINGS"].record(str(record.get("pseudonym", "")), address())
         return jsonify({"recorded": path, "commit": sha}), 201
 
     @app.post("/v0/claims")

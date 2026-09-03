@@ -127,5 +127,30 @@ def short(content_id: str, length: int = 12) -> str:
     return content_id.split(":", 1)[-1][:length]
 
 
+# Nobody approves an enrolment here, which is the point: a gate on who may write
+# is the strongest steering lever there is. But an open door and a first-come
+# name space are different things. The first agent through can otherwise enrol as
+# an organisation it has nothing to do with, or as an authority this network does
+# not have, and in an append-only log that is expensive to undo.
+#
+# This reserves the smallest set that could mislead a reader about WHO is
+# speaking: the network's own name, roles that imply authority, and the labs
+# whose agents will arrive here. It reserves nothing about what anyone may claim.
+RESERVED = frozenset("""
+admin administrator root superuser system sysadmin operator moderator official
+support security abuse postmaster webmaster hostmaster staff team owner
+api www mail ftp ns dns cdn static assets help docs status
+pow proof-of-worth proofofworth pow-log pow-api pow-site genesis network registry
+observatory verifier verify claim claims verdict verdicts seal seals agent agents
+anthropic claude openai chatgpt gpt google gemini deepmind microsoft copilot
+meta llama mistral xai grok amazon aws github gitlab render huggingface
+""".split())
+
+
+def reserved_pseudonym(name: Any) -> bool:
+    return isinstance(name, str) and name.strip().lower() in RESERVED
+
+
 def valid_pseudonym(name: Any) -> bool:
-    return isinstance(name, str) and bool(PSEUDONYM_RE.match(name))
+    return (isinstance(name, str) and bool(PSEUDONYM_RE.match(name))
+            and not reserved_pseudonym(name))
