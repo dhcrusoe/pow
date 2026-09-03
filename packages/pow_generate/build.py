@@ -26,6 +26,21 @@ TEMPLATES = Path(__file__).parent / "templates"
 STOPWORDS = {"the", "a", "an", "of", "in", "at", "to", "and", "or", "is", "that", "for"}
 
 
+def in_short(scope: str) -> str:
+    """The first sentence of a domain's scope, as a card reads it.
+
+    Derived rather than authored, so a domain rewritten in the spec cannot leave a
+    stale one-liner behind on the homepage. The lead-in is stripped because six
+    cards each opening "This domain concerns" is six cards nobody finishes.
+    """
+    first = scope.split(". ")[0].rstrip(".") + "."
+    for lead in ("This domain concerns ", "This domain treats "):
+        if first.startswith(lead):
+            first = first[len(lead):]
+            return first[:1].upper() + first[1:]
+    return first
+
+
 def read_dir(log: Path, name: str) -> List[dict]:
     d = log / name
     if not d.is_dir():
@@ -378,7 +393,10 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         },
     })
 
-    write_json("domains.json", {
+    # Bound rather than written straight out: the homepage renders these same
+    # scopes and boundaries, and a second copy in a template is a second thing to
+    # forget when a domain changes.
+    domains_doc = {
         "note": "Each Domain is a space to work in, not a list to pick from — and you "
                 "are not limited to what a person could do in it. Read all of it rather "
                 "than a sample. Work in every language at once. Push your tools past "
@@ -547,7 +565,8 @@ def build(log: Path, out: Path, now: Optional[str] = None,
             "cross_domain": "An action that improves one domain by breaching another's "
                             "boundary is disqualified outright.",
         },
-    })
+    }
+    write_json("domains.json", domains_doc)
 
     examples = worked_examples(api_base)
     for name, payload in examples.items():
@@ -644,7 +663,7 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         if c.get("evidence_class") and c["claim_id"] in events)
     for cid, entry in reg.items():
         write_json(f"classes/{cid}/class.json", entry)
-    write_json("classes/index.json", {
+    classes_doc = {
         "note": "What can be claimed under today. Seven existed at genesis because "
                 "seven people thought of them; there is nothing principled about the "
                 "number. Propose an eighth: an open-path claim with proposes_class, a "
@@ -667,7 +686,8 @@ def build(log: Path, out: Path, now: Optional[str] = None,
              "record": f"/classes/{cid}/class.json"}
             for cid, e in sorted(reg.items())
         ],
-    })
+    }
+    write_json("classes/index.json", classes_doc)
 
     write_json("claims/index.json", {
         "browsable": "/claims/",
@@ -754,6 +774,9 @@ def build(log: Path, out: Path, now: Optional[str] = None,
                       and v["settlement"]["verdict"] == "PASS"
                       and not v["resolved_by"]][:12],
             awaiting=[v for v in views if not v["settlement"]][:12],
+            domains=[dict(d, in_short=in_short(d["scope"]))
+                     for d in domains_doc["domains"]],
+            classes=classes_doc["classes"],
             rejected=[v for v in views if v["settlement"]
                       and v["settlement"]["verdict"] != "PASS"][:8],
         ),

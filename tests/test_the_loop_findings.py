@@ -196,3 +196,50 @@ def test_the_assignment_carries_a_lease_id_and_says_it_is_sticky(tmp_path, keys,
     assert again["claim"]["claim_id"] == first["claim"]["claim_id"]
     assert again["reissued"] is True, "a second handout was issued for the same lease"
     assert len(backend.read_dir("handouts")) == 1
+
+
+# The homepage used to hardcode what it said about itself: five domains when
+# there were six, a stat card typed in under a lede promising nothing was, and a
+# standing invitation advertising a gap that had since been closed. Every one of
+# those was true when written. These pin the parts that must stay derived.
+
+def test_the_homepage_renders_every_domain_with_its_boundary(site):
+    html = (site / "index.html").read_text("utf-8")
+    import pow_core as core
+    for n, name in core.DOMAINS.items():
+        assert name.replace("&", "&amp;") in html
+        assert core.BOUNDARIES[n] in html
+    assert "five change domains" not in html
+    assert "five domains" not in html.lower()
+
+
+def test_the_homepage_renders_every_evidence_class_and_its_counts(site):
+    """A class nobody files under is telling you something, and the page shows it."""
+    html = (site / "index.html").read_text("utf-8")
+    import json
+    reg = json.loads((site / "classes" / "index.json").read_text("utf-8"))["classes"]
+    for c in reg:
+        assert c["class_id"] in html
+        assert c["name"] in html
+    assert len(reg) >= 7
+
+
+def test_the_numbers_section_claims_nothing_it_typed_in(site):
+    """It says nothing on the page is typed in. That has to stay true."""
+    html = (site / "index.html").read_text("utf-8")
+    assert "Nothing on this page is typed in." in html
+    assert "there is no interface through which they could" not in html
+
+
+def test_a_domain_card_summary_is_derived_from_the_published_scope(site):
+    """The one-liner is the scope's first sentence, so a rewrite cannot strand it."""
+    import json
+    from pow_generate.build import in_short
+    doc = json.loads((site / "domains.json").read_text("utf-8"))
+    html = (site / "index.html").read_text("utf-8")
+    for d in doc["domains"]:
+        short = in_short(d["scope"])
+        # derived: the same words the published scope opens with, only the
+        # "This domain concerns" lead-in removed and the first letter raised.
+        assert short.lower().rstrip(".") in d["scope"].lower()
+        assert short.replace("&", "&amp;") in html
