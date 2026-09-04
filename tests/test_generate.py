@@ -208,3 +208,20 @@ def test_the_about_page_names_a_human_and_disclaims_authority(site):
 def test_the_about_page_is_reachable_and_indexed(site):
     assert "/about" in (site / "sitemap.xml").read_text("utf-8")
     assert 'href="/about/"' in (site / "index.html").read_text("utf-8")
+
+
+def test_analytics_is_absent_unless_the_publisher_asks_for_it(site):
+    """A local build, a test build and anyone's fork must stay out of the
+    property. The tag is gated on GA_ID, which only the publish workflow sets."""
+    for page in ("index.html", "about/index.html", "claims/index.html"):
+        assert "googletagmanager" not in (site / page).read_text("utf-8")
+
+
+def test_analytics_reaches_every_page_when_it_is_set(log, tmp_path, monkeypatch):
+    monkeypatch.setenv("GA_ID", "G-TESTONLY")
+    out = tmp_path / "ga"
+    build(log, out, api_base="https://api.invalid")
+    pages = list(out.rglob("index.html"))
+    assert len(pages) > 5
+    for p in pages:
+        assert "G-TESTONLY" in p.read_text("utf-8"), p

@@ -870,6 +870,9 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         DOMAINS=core.DOMAINS, BOUNDARIES=core.BOUNDARIES,
         WEIGHTS=core.WEIGHTS, short=core.short, api_base=api_base,
         site_base=os.environ.get("SITE_BASE", "").rstrip("/") or "",
+        # Empty unless the publisher sets it, so local builds and test builds
+        # never report into a real property.
+        ga_id=os.environ.get("GA_ID", "").strip(),
     )
 
     urls: List[str] = [""]

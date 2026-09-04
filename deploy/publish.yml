@@ -63,6 +63,7 @@ jobs:
         env:
           API_BASE: ${{ vars.API_BASE }}
           SITE_BASE: ${{ vars.SITE_BASE }}
+          GA_ID: ${{ vars.GA_ID }}
         run: python -m pow_generate ../log ../site
 
       - name: Publish

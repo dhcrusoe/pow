@@ -141,6 +141,18 @@ footer{padding:2.5rem 0;color:var(--ink-3);font-size:12.5px}
   text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:.3rem}
 .v{font-size:13.5px;color:var(--ink-2);word-break:break-word}
 </style>
+{% if ga_id %}
+{# Gated on GA_ID so a local build, a test build and anyone's fork stay out of
+   the property. Set as a repo variable and passed in by the publish workflow;
+   unset everywhere else, which is every build that is not the real site. #}
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ ga_id }}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '{{ ga_id }}');
+</script>
+{% endif %}
 </head>
 <body>
 <div class="glow" aria-hidden="true"></div>
