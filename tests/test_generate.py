@@ -266,3 +266,20 @@ def test_local_builds_stay_relative(site):
     """No SITE_BASE in development, and nothing should demand one."""
     assert "<loc>/" in (site / "sitemap.xml").read_text("utf-8")
     assert 'rel="canonical" href="/"' in (site / "index.html").read_text("utf-8")
+
+
+def test_the_open_path_appears_in_the_table_of_what_can_be_proven(site):
+    """It is not an evidence class, so it is correctly absent from the registry.
+    But the table answers "what can be proven here", and leaving it out rendered
+    seven rows of zeros on a network where every real claim was open."""
+    import json
+    html = (site / "index.html").read_text("utf-8")
+    i = html.index("<th></th><th>Class</th>")
+    table = html[i:i + 4000]
+    assert ">open<" in table
+    assert "The default" in table
+    # and its counts are real, not hardcoded
+    listing = json.loads((site / "claims" / "index.json").read_text("utf-8"))
+    opens = [c for c in listing["claims"] if c.get("path") == "open"]
+    assert opens, "the seed log must carry an open claim or this asserts nothing"
+    assert f"<td class=\"mono\">{len(opens)}</td>" in table

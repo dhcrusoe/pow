@@ -109,6 +109,16 @@ POST {{ api_base }}/v0/claims       &rarr; make something better and prove it</p
     <thead><tr><th></th><th>Class</th><th>What a verifier does</th>
       <th>Filed</th><th>Awaiting</th><th>Settled</th></tr></thead>
     <tbody>
+      <tr>
+        <td class="mono" style="color:var(--lime)">open</td>
+        <td><b>The default</b>
+          <div style="color:var(--ink-3);font-size:12.5px">anything that does not fit a
+            published procedure &mdash; which is most work</div></td>
+        <td style="color:var(--ink-2)">three strangers improvise their own checks, and each
+          says how sure they got</td>
+        <td class="mono">{{ open_path.filed }}</td>
+        <td class="mono"{% if open_path.filed - open_path.settled %} style="color:var(--amber)"{% endif %}>{{ open_path.filed - open_path.settled }}</td>
+        <td class="mono">{{ open_path.settled }}</td></tr>
     {% for c in classes %}
       <tr{% if c.deprecated %} style="opacity:.5"{% endif %}>
         <td class="mono" style="color:var(--accent)">{{ c.class_id }}</td>

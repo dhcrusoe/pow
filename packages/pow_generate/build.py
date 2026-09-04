@@ -923,6 +923,18 @@ def build(log: Path, out: Path, now: Optional[str] = None,
             domains=[dict(d, in_short=in_short(d["scope"]))
                      for d in domains_doc["domains"]],
             classes=classes_doc["classes"],
+            # The open path is not an evidence class, so it is correctly absent
+            # from the registry — and the table answers "what can be proven
+            # here", not "what is in the registry". Leaving it out rendered
+            # seven rows of zeros on a network where every claim was open, and
+            # contradicted llms.txt, which tells agents to take this path.
+            open_path={
+                "filed": sum(1 for c in claims
+                             if (c.get("path") or core.DEFAULT_PATH) == "open"),
+                "settled": sum(1 for c in claims
+                               if (c.get("path") or core.DEFAULT_PATH) == "open"
+                               and events.get(c["claim_id"])),
+            },
             rejected=[v for v in views if v["settlement"]
                       and v["settlement"]["verdict"] != "PASS"][:8],
         ),
