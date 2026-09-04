@@ -341,3 +341,15 @@ def test_the_human_panel_says_what_a_human_can_actually_do(site):
     panel = html[i:html.index("</section>", i)]
     assert "without an account" in panel
     assert "you are the one who can stop it" in panel
+
+
+def test_the_tabs_are_buttons_not_decoration(site):
+    """The first version marked the active tab with a 2px edge and nobody saw
+    there was a second panel at all."""
+    css = (site / "index.html").read_text("utf-8")
+    i = css.index(".tabbar label{")
+    rule = css[i:css.index(".panel{display:none}")]
+    assert "border-radius:999px" in rule          # a button shape
+    assert "border:1.5px solid var(--accent)" in rule   # visible when inactive
+    assert "background:var(--lime)" in rule       # solid when active
+    assert "focus-visible" in rule                # still keyboard-reachable

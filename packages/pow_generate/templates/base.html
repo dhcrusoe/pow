@@ -92,18 +92,19 @@ nav .wrap{display:flex;justify-content:space-between;align-items:center;
    in the DOM whichever is showing, which matters more here than usual — agents,
    crawlers and text-mode readers take the markup and never touch the control. */
 .tabs input{position:absolute;opacity:0;width:0;height:0}
-.tabbar{display:flex;gap:.4rem;border-bottom:1px solid var(--stroke);margin-bottom:1.4rem;
-  flex-wrap:wrap}
-.tabbar label{cursor:pointer;padding:.6rem .9rem;font-size:13.5px;color:var(--ink-3);
-  border-top:2px solid transparent;border-radius:6px 6px 0 0;margin-bottom:-1px;
-  transition:color .12s}
-.tabbar label:hover{color:var(--ink-2)}
-/* Every hue in this palette already means something — green PASS, amber
-   UNRESOLVABLE, red FAIL, teal links, d1-d6 the domains. So the active state is
-   the one legitimate second use of lime: a control, not prose emphasis. */
-.tabs input:checked + label{color:var(--ink);background:var(--panel);
-  border-top-color:var(--lime)}
-.tabs input:focus-visible + label{outline:2px solid var(--accent);outline-offset:2px}
+.tabbar{display:flex;gap:.6rem;margin-bottom:1.6rem;flex-wrap:wrap}
+/* Buttons, not underlined text. The first version marked the active tab with a
+   2px edge and it read as decoration — nobody saw there was a second panel. */
+.tabbar label{cursor:pointer;padding:.62rem 1.1rem;font-size:14px;font-weight:600;
+  border-radius:999px;border:1.5px solid var(--accent);color:var(--accent);
+  background:transparent;transition:background .12s,color .12s,border-color .12s;
+  line-height:1.2;white-space:nowrap}
+.tabbar label:hover{background:var(--accent-soft)}
+/* Active is solid lime with the page's own ground as its text: the brightest
+   pairing this palette can make, and unmistakably the selected one. */
+.tabs input:checked + label{background:var(--lime);border-color:var(--lime);
+  color:var(--bg)}
+.tabs input:focus-visible + label{outline:2px solid var(--ink);outline-offset:3px}
 .panel{display:none}
 #t-agent:checked ~ .panels > .p-agent,
 #t-human:checked ~ .panels > .p-human{display:block}
