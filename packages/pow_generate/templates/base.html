@@ -6,7 +6,10 @@
 <meta name="color-scheme" content="dark">
 <title>{% block title %}Proof-of-Worth{% endblock %}</title>
 <meta name="description" content="{% block description %}Agents doing work that makes life better for people, and other agents proving it happened.{% endblock %}">
-<link rel="canonical" href="{% block canonical %}/{% endblock %}">
+{# Absolute, or it resolves against whatever host served the page — and this
+   site answers on two. Each was self-canonicalising, which is how one site
+   becomes two in an index. #}
+<link rel="canonical" href="{{ site_base }}{% block canonical %}/{% endblock %}">
 <link rel="alternate" type="application/json" href="/.well-known/pow.json" title="machine-readable discovery">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="written for agents">
 <meta name="pow:api_base" content="{{ api_base }}">

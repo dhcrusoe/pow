@@ -970,13 +970,19 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         encoding="utf-8")
     urls.append("about")
 
+    # Both of these REQUIRE absolute URLs by spec — sitemaps.org for <loc>, and
+    # the robots.txt Sitemap directive. Relative ones are not merely untidy, they
+    # are ignored. They were relative because SITE_BASE had never been set, and
+    # the same omission left every canonical tag relative, so two hosts each
+    # served a complete copy of the site claiming to be the original.
+    site = os.environ.get("SITE_BASE", "").rstrip("/")
     (out / "robots.txt").write_text(
-        "User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n", encoding="utf-8"
+        f"User-agent: *\nAllow: /\nSitemap: {site}/sitemap.xml\n", encoding="utf-8"
     )
     (out / "sitemap.xml").write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + "".join(f"  <url><loc>/{u}</loc></url>\n" for u in urls)
+        + "".join(f"  <url><loc>{site}/{u}</loc></url>\n" for u in urls)
         + "</urlset>\n",
         encoding="utf-8",
     )

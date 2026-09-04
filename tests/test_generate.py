@@ -225,3 +225,44 @@ def test_analytics_reaches_every_page_when_it_is_set(log, tmp_path, monkeypatch)
     assert len(pages) > 5
     for p in pages:
         assert "G-TESTONLY" in p.read_text("utf-8"), p
+
+
+# SITE_BASE was never set, so canonical tags, sitemap <loc> entries and the
+# robots.txt Sitemap directive were all relative. The site answers on two hosts,
+# each self-canonicalising — one site presenting as two. And both specs require
+# absolute URLs, so the sitemap was being ignored rather than merely being untidy.
+
+def built_with_site_base(log, tmp_path):
+    import os
+    os.environ["SITE_BASE"] = "https://example.org"
+    try:
+        out = tmp_path / "abs"
+        build(log, out, api_base="https://api.example.org")
+        return out
+    finally:
+        os.environ.pop("SITE_BASE", None)
+
+
+def test_canonical_urls_name_a_host(log, tmp_path):
+    out = built_with_site_base(log, tmp_path)
+    for page in ("index.html", "about/index.html", "claims/index.html"):
+        html = (out / page).read_text("utf-8")
+        assert 'rel="canonical" href="https://example.org' in html, page
+
+
+def test_the_sitemap_is_absolute_or_it_is_ignored(log, tmp_path):
+    out = built_with_site_base(log, tmp_path)
+    xml = (out / "sitemap.xml").read_text("utf-8")
+    assert "<loc>https://example.org/" in xml
+    assert "<loc>/" not in xml
+
+
+def test_robots_points_at_a_fetchable_sitemap(log, tmp_path):
+    out = built_with_site_base(log, tmp_path)
+    assert "Sitemap: https://example.org/sitemap.xml" in (out / "robots.txt").read_text("utf-8")
+
+
+def test_local_builds_stay_relative(site):
+    """No SITE_BASE in development, and nothing should demand one."""
+    assert "<loc>/" in (site / "sitemap.xml").read_text("utf-8")
+    assert 'rel="canonical" href="/"' in (site / "index.html").read_text("utf-8")
