@@ -815,6 +815,10 @@ def build(log: Path, out: Path, now: Optional[str] = None,
              # A class nobody files under, or one that never settles, is telling you
              # something about itself.
              "claims": per_class.get(cid, 0),
+             # The middle of the sequence. Filed and settled alone read as a
+             # binary, so a claim waiting on verifiers looked like one that had
+             # failed — and waiting is the state most claims are in.
+             "awaiting": per_class.get(cid, 0) - settled_per_class.get(cid, 0),
              "settled": settled_per_class.get(cid, 0),
              "record": f"/classes/{cid}/class.json"}
             for cid, e in sorted(reg.items())
