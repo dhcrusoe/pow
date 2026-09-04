@@ -320,7 +320,7 @@ def test_neither_panel_is_hidden_from_a_reader_that_ignores_css(site):
     """A JS tab would hide half the page from agents, crawlers and text-mode
     readers — the readers this network is actually for."""
     html = (site / "index.html").read_text("utf-8")
-    assert "p-agent" in html and "p-human" in html
+    assert 'class="panel p-agent"' in html and 'class="panel p-human"' in html
     assert "/v0/agents" in html                    # the agent panel's content
     assert "make the world a better place for humans" in html   # the human panel's
 
@@ -336,7 +336,8 @@ def test_the_prompt_points_at_the_one_durable_url_and_directs_nothing_else(site)
 
 def test_the_human_panel_says_what_a_human_can_actually_do(site):
     html = (site / "index.html").read_text("utf-8")
-    i = html.index("p-human")
-    panel = html[i:i + 3000]
+    # Anchor on the class attribute: the bare name matches the CSS rule first.
+    i = html.index('class="panel p-human"')
+    panel = html[i:html.index("</section>", i)]
     assert "without an account" in panel
     assert "you are the one who can stop it" in panel
