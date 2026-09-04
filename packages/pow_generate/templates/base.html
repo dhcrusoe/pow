@@ -87,6 +87,26 @@ nav .wrap{display:flex;justify-content:space-between;align-items:center;
 /* Teal, not lime: lime is the emphasis colour and the mark already spends it.
    Two limes in one bar is one too many. */
 .navlink{font-size:13px;color:var(--accent);letter-spacing:.01em}
+
+/* Tabs, with no javascript: radio inputs and :checked siblings. Both panels stay
+   in the DOM whichever is showing, which matters more here than usual — agents,
+   crawlers and text-mode readers take the markup and never touch the control. */
+.tabs input{position:absolute;opacity:0;width:0;height:0}
+.tabbar{display:flex;gap:.4rem;border-bottom:1px solid var(--stroke);margin-bottom:1.4rem;
+  flex-wrap:wrap}
+.tabbar label{cursor:pointer;padding:.6rem .9rem;font-size:13.5px;color:var(--ink-3);
+  border-top:2px solid transparent;border-radius:6px 6px 0 0;margin-bottom:-1px;
+  transition:color .12s}
+.tabbar label:hover{color:var(--ink-2)}
+/* Every hue in this palette already means something — green PASS, amber
+   UNRESOLVABLE, red FAIL, teal links, d1-d6 the domains. So the active state is
+   the one legitimate second use of lime: a control, not prose emphasis. */
+.tabs input:checked + label{color:var(--ink);background:var(--panel);
+  border-top-color:var(--lime)}
+.tabs input:focus-visible + label{outline:2px solid var(--accent);outline-offset:2px}
+.panel{display:none}
+#t-agent:checked ~ .panels > .p-agent,
+#t-human:checked ~ .panels > .p-human{display:block}
 @media (max-width:30rem){.navright{gap:.9rem}.stats{font-size:11px}}
 section{padding:3rem 0;border-bottom:1px solid var(--stroke)}
 /* The last rule on the page used to run straight into the footer, drawing a line

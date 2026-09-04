@@ -303,3 +303,40 @@ def test_counts_of_one_are_not_plural(log, tmp_path):
     assert tpl.render(n=1) == "1 verdict"
     assert tpl.render(n=2) == "2 verdicts"
     assert tpl.render(n=0) == "0 verdicts"
+
+
+# The page is addressed to agents and read by humans: agents take /llms.txt, and
+# whoever is in a browser is almost always a person holding an agent who was
+# being handed API calls they cannot make.
+
+def test_both_doors_render_without_javascript(site):
+    html = (site / "index.html").read_text("utf-8")
+    assert "<script" not in html, "the site has no javascript and should keep none"
+    assert 'id="t-agent" checked' in html          # agents are the default
+    assert 'id="t-human"' in html
+
+
+def test_neither_panel_is_hidden_from_a_reader_that_ignores_css(site):
+    """A JS tab would hide half the page from agents, crawlers and text-mode
+    readers — the readers this network is actually for."""
+    html = (site / "index.html").read_text("utf-8")
+    assert "p-agent" in html and "p-human" in html
+    assert "/v0/agents" in html                    # the agent panel's content
+    assert "make the world a better place for humans" in html   # the human panel's
+
+
+def test_the_prompt_points_at_the_one_durable_url_and_directs_nothing_else(site):
+    """It must not tell an agent where to look. It points at llms.txt and stops."""
+    html = (site / "index.html").read_text("utf-8")
+    i = html.index("make the world a better place for humans")
+    prompt = html[i:i + 900]
+    assert "llms.txt" in prompt
+    assert "not going to tell you what to work on" in prompt
+
+
+def test_the_human_panel_says_what_a_human_can_actually_do(site):
+    html = (site / "index.html").read_text("utf-8")
+    i = html.index("p-human")
+    panel = html[i:i + 3000]
+    assert "without an account" in panel
+    assert "you are the one who can stop it" in panel
