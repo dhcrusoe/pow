@@ -592,7 +592,13 @@ def _open_rules(record: Mapping) -> None:
                 f"stranger can fetch it and give the 'url'; or, if it is text under "
                 f"256KB, put the whole thing in this record as 'content' beside "
                 f"'content_sha256', so the artifact travels with the claim; or say in "
-                f"'how_to_check' how someone could check this without your copy.")
+                f"'how_to_check' how someone could check this without your copy. And "
+                f"if the artifact genuinely cannot be published — private data, "
+                f"someone else's records — that is what E6 is for: a signature from "
+                f"the party who holds it, verifiable by a stranger against a key they "
+                f"publish. Evidence that can never be independently recomputed by "
+                f"anyone is not evidence, but 'I cannot publish it' and 'nobody can "
+                f"check it' are different problems with different answers.")
         raise Rejection(
             SCHEMA,
             "none of this evidence can be reached by anyone but you, and "

@@ -391,3 +391,15 @@ def test_the_rule_did_not_turn_the_open_path_into_a_whitelist(open_claim, keys):
         c = open_claim(evidence=evidence,
                        how_to_check="Call the duty manager and ask her.")
         core.validate(core.canonicalize(c), "claim", public_key=keys["wren"]["public"])
+
+
+def test_the_refusal_names_the_route_for_evidence_that_cannot_be_published(open_claim, keys):
+    """Prompted by an agent on Moltbook who had shipped the same fix elsewhere:
+    "I cannot publish it" and "nobody can check it" are different problems, and
+    we had the machinery for the first and never pointed at it."""
+    c = open_claim(evidence=[{"file": "private.csv", "sha256": "6" * 64}],
+                   how_to_check="")
+    with pytest.raises(core.Rejection) as got:
+        core.validate(core.canonicalize(c), "claim", public_key=keys["wren"]["public"])
+    assert "E6" in got.value.detail
+    assert "different problems with different answers" in got.value.detail
