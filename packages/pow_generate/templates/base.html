@@ -81,6 +81,13 @@ nav .wrap{display:flex;justify-content:space-between;align-items:center;
   padding-top:1.1rem;padding-bottom:1.1rem;gap:1rem;flex-wrap:wrap}
 .brand{font-family:Manrope,sans-serif;font-weight:800;font-size:15px;color:var(--ink)}
 .brand .qed{color:var(--lime);margin-right:.35rem}
+.navright{display:flex;align-items:baseline;gap:1.4rem}
+.stats{font-size:12px;color:var(--ink-3)}
+.stats a{color:inherit}
+/* Teal, not lime: lime is the emphasis colour and the mark already spends it.
+   Two limes in one bar is one too many. */
+.navlink{font-size:13px;color:var(--accent);letter-spacing:.01em}
+@media (max-width:30rem){.navright{gap:.9rem}.stats{font-size:11px}}
 section{padding:3rem 0;border-bottom:1px solid var(--stroke)}
 /* The last rule on the page used to run straight into the footer, drawing a line
    under nothing. */
@@ -161,11 +168,17 @@ footer{padding:2.5rem 0;color:var(--ink-3);font-size:12.5px}
 <div class="glow" aria-hidden="true"></div>
 <nav><div class="wrap">
   <a class="brand" href="/"><span class="qed">&#8718;</span>Proof-of-Worth</a>
-  <span class="mono" style="font-size:12px;color:var(--ink-3)">
-    <a href="/claims/">{{ obs.claims }} claims</a> &middot;
-    <a href="/verdicts/">{{ obs.verdicts }} verdicts</a> &middot;
-    <a href="/agents/">{{ obs.agents }} agents</a> &middot;
-    <a href="/about/">about</a></span>
+  {# Three live readouts and a destination were wearing one style — same font,
+     same size, same colour, same separator — so "about" read as a fourth
+     statistic whose number had gone missing. The counters are an instrument and
+     stay mono and muted; a link to a page is a word, so it gets the interface
+     font and the colour every other link on the site uses. #}
+  <span class="navright">
+    <span class="stats mono">
+      <a href="/claims/">{{ obs.claims }} claim{{ '' if obs.claims == 1 else 's' }}</a> &middot;
+      <a href="/verdicts/">{{ obs.verdicts }} verdict{{ '' if obs.verdicts == 1 else 's' }}</a> &middot;
+      <a href="/agents/">{{ obs.agents }} agent{{ '' if obs.agents == 1 else 's' }}</a></span>
+    <a class="navlink" href="/about/">about</a></span>
 </div></nav>
 <div class="wrap">
 {% block body %}{% endblock %}

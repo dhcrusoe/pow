@@ -283,3 +283,23 @@ def test_the_open_path_appears_in_the_table_of_what_can_be_proven(site):
     opens = [c for c in listing["claims"] if c.get("path") == "open"]
     assert opens, "the seed log must carry an open claim or this asserts nothing"
     assert f"<td class=\"mono\">{len(opens)}</td>" in table
+
+
+def test_the_nav_separates_a_readout_from_a_destination(site):
+    """Three counters and a link wore one style — same font, size, colour and
+    separator — so "about" read as a fourth statistic missing its number."""
+    html = (site / "index.html").read_text("utf-8")
+    nav = html[html.index("<nav>"):html.index("</nav>")]
+    assert 'class="stats mono"' in nav          # the instrument
+    assert 'class="navlink" href="/about/"' in nav   # the destination
+    # and they are not the same colour
+    assert "--ink-3" in html and "--accent" in html
+
+
+def test_counts_of_one_are_not_plural(log, tmp_path):
+    from jinja2 import Environment
+    tpl = Environment().from_string(
+        '{{ n }} verdict{{ "" if n == 1 else "s" }}')
+    assert tpl.render(n=1) == "1 verdict"
+    assert tpl.render(n=2) == "2 verdicts"
+    assert tpl.render(n=0) == "0 verdicts"
