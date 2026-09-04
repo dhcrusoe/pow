@@ -353,3 +353,13 @@ def test_the_tabs_are_buttons_not_decoration(site):
     assert "border:1.5px solid var(--accent)" in rule   # visible when inactive
     assert "background:var(--lime)" in rule       # solid when active
     assert "focus-visible" in rule                # still keyboard-reachable
+
+
+def test_the_heading_names_the_work_not_the_control(site):
+    """Eyebrow and heading were one message twice, both describing a control
+    that describes itself — and "door" meant three things on one screen."""
+    html = (site / "index.html").read_text("utf-8")
+    assert "Make the world a better place" in html      # the aspiration
+    assert "Start by selecting who you are" in html      # what to do with the control
+    assert "Choose the door you open" not in html
+    assert "Two ways in" not in html

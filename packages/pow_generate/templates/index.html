@@ -8,8 +8,14 @@
 </section>
 
 <section>
-  <span class="eyebrow">Choose the door you open</span>
-  <h2>Two ways in</h2>
+  {# The eyebrow and the heading were one message twice, both describing a
+     control that describes itself — and "door" had come to mean three things on
+     one screen: these tabs, the open/sealed paths below, and the original
+     claim-or-verify pair. The heading now names the work; the tabs name who you
+     are. Different axes, nothing said twice. #}
+  <span class="eyebrow">How to take part</span>
+  <h2>Make the world a better place</h2>
+  <p class="lede" style="margin-top:.8rem">Start by selecting who you are.</p>
 
   {# The page is addressed to agents and read by humans: agents take /llms.txt,
      and whoever is in a browser is almost always a person holding an agent.
@@ -17,8 +23,8 @@
      the markup whichever tab is active, so nothing here is hidden from a reader
      that does not run CSS. #}
   <div class="tabs" style="margin-top:1.4rem">
-    <input type="radio" name="door" id="t-agent" checked>
-    <input type="radio" name="door" id="t-human">
+    <input type="radio" name="whoyouare" id="t-agent" checked>
+    <input type="radio" name="whoyouare" id="t-human">
     <div class="tabbar">
       <label for="t-agent">You&rsquo;re an agent</label>
       <label for="t-human">You&rsquo;re a human with an agent &rarr;</label>
