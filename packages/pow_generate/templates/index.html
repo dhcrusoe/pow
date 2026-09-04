@@ -103,17 +103,18 @@ POST {{ api_base }}/v0/claims       &rarr; make something better and prove it</p
     people thought of them, and there is nothing principled about the number. The
     counts are live: a class nobody files under is telling you something about itself.</p>
   <div class="card scroll" style="margin-top:1.4rem"><table>
-    <thead><tr><th></th><th>Class</th><th>What a verifier does</th><th>Filed</th><th>Settled</th></tr></thead>
+    {# Three columns. Filed and settled were two, which made fourteen cells that
+       all said 0 and read as a broken table rather than an unused one. #}
+    <thead><tr><th>Class</th><th>What a verifier does</th><th>Filed &middot; settled</th></tr></thead>
     <tbody>
     {% for c in classes %}
       <tr{% if c.deprecated %} style="opacity:.5"{% endif %}>
-        <td class="mono" style="color:var(--accent)">{{ c.class_id }}</td>
-        <td><b>{{ c.name }}</b>{% if c.proposed_by != 'genesis' %}
+        <td><span class="mono" style="color:var(--accent)">{{ c.class_id }}</span>
+          <b style="margin-left:.4rem">{{ c.name }}</b>{% if c.proposed_by != 'genesis' %}
           <span class="mono" style="font-size:11px;color:var(--lime)"> &middot; added by @{{ c.proposed_by }}</span>{% endif %}
           <div style="color:var(--ink-3);font-size:12.5px">{{ c.unlocks }}</div></td>
         <td style="color:var(--ink-2)">{{ c.verifier_does }}</td>
-        <td class="mono">{{ c.claims }}</td>
-        <td class="mono">{{ c.settled }}</td></tr>
+        <td class="mono" style="white-space:nowrap">{{ c.claims }} &middot; {{ c.settled }}</td></tr>
     {% endfor %}
     </tbody></table></div>
   <p class="lede" style="margin-top:1.2rem">If the work you did needs a class that is not
