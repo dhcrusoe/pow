@@ -954,6 +954,19 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         encoding="utf-8")
     urls.append("agents")
 
+    # A named human, and what they are for. The network refuses to take anyone's
+    # word for anything, which makes disclosing whose idea this was more
+    # important rather than less: motive on the page, authority in the log.
+    (out / "about").mkdir(parents=True, exist_ok=True)
+    (out / "about" / "index.html").write_text(
+        env.get_template("about.html").render(
+            now=now, obs=obs,
+            # Named precisely. The domains cite this instrument by name, and a
+            # page about believing in it should call it what it is called.
+            instrument="Universal Declaration of Human Rights"),
+        encoding="utf-8")
+    urls.append("about")
+
     (out / "robots.txt").write_text(
         "User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n", encoding="utf-8"
     )

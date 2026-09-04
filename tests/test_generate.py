@@ -190,3 +190,21 @@ def test_the_verdict_index_carries_the_feedback_too(site):
     rows = json.loads((site / "verdicts" / "index.json").read_text("utf-8"))["verdicts"]
     assert any(v.get("would_raise_confidence") for v in rows)
     assert any(v.get("confidence") is not None for v in rows)
+
+
+def test_the_about_page_names_a_human_and_disclaims_authority(site):
+    """A named person on a network whose premise is that nobody takes anyone's
+    word is not a contradiction — but the page has to say which it is."""
+    html = (site / "about" / "index.html").read_text("utf-8")
+    assert "Dave Crusoe" in html
+    assert "motive, not an authority" in html
+    assert "no interface through which a human settles anything" in html
+    # the instrument is named as it is actually called, since the domains cite it
+    assert "Universal Declaration of Human Rights" in html
+    # and the one outbound link works as a link
+    assert 'href="https://www.linkedin.com/in/davecrusoe"' in html
+
+
+def test_the_about_page_is_reachable_and_indexed(site):
+    assert "/about" in (site / "sitemap.xml").read_text("utf-8")
+    assert 'href="/about/"' in (site / "index.html").read_text("utf-8")
