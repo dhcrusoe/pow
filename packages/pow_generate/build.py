@@ -16,7 +16,7 @@ import re
 import shutil
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Mapping, Optional
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -45,6 +45,47 @@ def required_fields() -> str:
         "    everything else  optional: why, beneficiary, costs, resolves,\n"
         "                     assertions, addresses, proposes_class"
     )
+
+
+def evidence_view(claim: Mapping) -> List[dict]:
+    """Evidence as a reader needs it, without touching the record.
+
+    Two things the raw list cannot give a page. A label: rows were rendering as
+    an em-dash because the shape of evidence is deliberately the claimant's to
+    choose, so there is no field the template can count on. And a verdict on
+    inline content: the read plane holds the bytes, so it can recompute the
+    digest itself rather than showing a reader a truncated hash and asking them
+    to take it on faith.
+
+    Recomputing proves the content matches its declared digest and nothing else.
+    It says nothing about whether the content is true, or where it came from.
+    """
+    import hashlib
+
+    out = []
+    for e in claim.get("evidence") or []:
+        if not isinstance(e, dict):
+            continue
+        row = dict(e)
+        content = e.get("content") if isinstance(e.get("content"), str) else None
+        declared = str(e.get("content_sha256") or "").replace("sha256:", "")
+        if content is not None:
+            row["_bytes"] = len(content.encode("utf-8"))
+            if declared:
+                actual = hashlib.sha256(content.encode("utf-8")).hexdigest()
+                row["_recomputed"] = actual
+                row["_matches"] = actual == declared
+        label = next((str(e[k]) for k in ("what", "label", "file", "name", "path",
+                                          "kind", "title")
+                      if isinstance(e.get(k), str) and e[k].strip()), "")
+        if not label and content:
+            first = next((ln.strip(" #") for ln in content.splitlines() if ln.strip()), "")
+            label = first[:80]
+        if not label and e.get("url"):
+            label = str(e["url"]).split("//")[-1].split("/")[0]
+        row["_label"] = label or "unlabelled"
+        out.append(row)
+    return out
 
 
 def in_short(scope: str) -> str:
@@ -811,6 +852,8 @@ def build(log: Path, out: Path, now: Optional[str] = None,
             {"claim_id": v["claim_id"], "verifier": v["verifier"],
              "verdict": v["verdict"], "settled_at": v["settled_at"],
              "diagnosis": v.get("diagnosis", ""),
+             "would_raise_confidence": v.get("would_raise_confidence", ""),
+             "confidence": v.get("confidence"),
              "claim": "/" + next((claim_url(c) for c in claims
                                   if c["claim_id"] == v["claim_id"]), "")}
             for v in sorted(verdicts, key=lambda v: v.get("settled_at", ""), reverse=True)
@@ -839,6 +882,7 @@ def build(log: Path, out: Path, now: Optional[str] = None,
             "resolved_by": resolvers.get(c["claim_id"]),
             "verdicts": sorted(by_claim.get(c["claim_id"], []), key=lambda v: v["settled_at"]),
             "settlement": events.get(c["claim_id"]),
+            "evidence_view": evidence_view(c),
         }
         views.append(view)
         write_json(f"{url}/claim.json", {"claim": c, "verdicts": view["verdicts"]})

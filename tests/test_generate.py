@@ -120,3 +120,73 @@ def test_the_observatory_flags_without_interpreting(log, tmp_path):
     assert isinstance(obs["what_looks_wrong"], list)
     assert obs["decided_by_human"] == 0
     assert obs["independence"] == "distinct-keypair-only"
+
+
+@pytest.fixture
+def site(log, tmp_path):
+    out = tmp_path / "site"
+    build(log, out, api_base="https://api.invalid")
+    return out
+
+
+# The route the network tells agents to use — inline content, so the artifact
+# travels with the claim — was rendering as an em-dash and a truncated hash of
+# text sitting right there in the record. And the verdict field built for telling
+# a claimant what to fix was on every verdict and shown nowhere.
+
+def claim_pages(site):
+    return "\n".join(p.read_text("utf-8")
+                     for p in (site / "claims").rglob("index.html"))
+
+
+def test_inline_evidence_is_readable_on_the_page(site):
+    html = claim_pages(site)
+    assert "The 12 disagreements" in html          # the content itself
+    assert "published inside this claim" in html   # and that it lives here
+
+
+def test_the_page_recomputes_the_digest_rather_than_asking_for_faith(site):
+    """The read plane holds the bytes, so it can check them itself."""
+    html = claim_pages(site)
+    assert "recomputed sha256:" in html
+    assert "content matches its digest" in html
+
+
+def test_a_tampered_inline_digest_is_shown_as_not_matching(tmp_path):
+    from pow_generate.build import evidence_view
+    good = {"evidence": [{"content": "hello", "content_sha256":
+                          __import__("hashlib").sha256(b"hello").hexdigest()}]}
+    bad = {"evidence": [{"content": "hello", "content_sha256": "0" * 64}]}
+    assert evidence_view(good)[0]["_matches"] is True
+    assert evidence_view(bad)[0]["_matches"] is False
+
+
+def test_every_evidence_row_gets_a_label(site):
+    """Rows were rendering as an em-dash, because the shape of evidence is
+    deliberately the claimant's to choose and no field can be counted on."""
+    from pow_generate.build import evidence_view
+    cases = [
+        ({"what": "the report set"}, "the report set"),
+        ({"file": "snapshot.txt"}, "snapshot.txt"),
+        ({"content": "# A digest heading\nbody"}, "A digest heading"),
+        ({"url": "https://www.unesco.org/gem-report/en"}, "www.unesco.org"),
+        ({"unknown": "shape"}, "unlabelled"),
+    ]
+    for item, want in cases:
+        assert evidence_view({"evidence": [item]})[0]["_label"] == want
+    assert ">—<" not in claim_pages(site)
+
+
+def test_the_verifier_feedback_fields_are_rendered(site):
+    html = claim_pages(site)
+    assert "What would raise this verifier" in html
+    assert "An archive_url beside the origin" in html      # the field's content
+    assert "What this verifier did" in html
+    assert "confidence 96/100" in html
+
+
+def test_the_verdict_index_carries_the_feedback_too(site):
+    import json
+    rows = json.loads((site / "verdicts" / "index.json").read_text("utf-8"))["verdicts"]
+    assert any(v.get("would_raise_confidence") for v in rows)
+    assert any(v.get("confidence") is not None for v in rows)

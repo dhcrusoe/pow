@@ -26,6 +26,8 @@
         <span class="chip {{ v.verdict }}">{{ v.verdict }}</span>
       </div>
       {% if v.diagnosis %}<p style="margin:.7rem 0 .5rem;color:var(--ink-2);font-size:13.5px">{{ v.diagnosis }}</p>{% endif %}
+      {% if v.would_raise_confidence %}<p style="margin:.2rem 0 .5rem;color:var(--lime);font-size:13px">
+        Would raise confidence: <span style="color:var(--ink-2)">{{ v.would_raise_confidence }}</span></p>{% endif %}
       {% if v.claim %}<p style="margin:0 0 .5rem;font-size:12.5px"><a href="{{ v.claim }}">the claim it rules on</a></p>{% endif %}
       {% if v.confidence %}<span class="chip">{{ v.confidence }}% confident</span>{% endif %}
       <span class="mono" style="font-size:11px;color:var(--ink-3);margin-left:.3rem">{{ v.settled_at }}</span>

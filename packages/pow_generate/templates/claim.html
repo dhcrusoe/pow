@@ -57,16 +57,34 @@
     {% if claim.beneficiary %}<div class="v" style="color:var(--ink-3);margin-top:.5rem">
       Who is better off: {{ claim.beneficiary }}</div>{% endif %}</div>
   <div class="card" style="margin-top:.8rem"><span class="k">Evidence</span>
-    {% if claim.evidence %}
-    <div class="scroll" style="margin-top:.5rem"><table>
-      <thead><tr><th>What</th><th>Where</th><th>Digest</th></tr></thead>
-      <tbody>
-      {% for e in claim.evidence %}
-        <tr><td>{{ e.what or e.label or "—" }}</td>
-          <td>{% if e.url %}<a href="{{ e.url }}" rel="nofollow noopener">{{ e.url }}</a>{% else %}&mdash;{% endif %}</td>
-          <td class="mono" style="font-size:11px">{{ (e.sha256 or e.content_sha256 or "")[:16] }}{% if e.sha256 or e.content_sha256 %}&hellip;{% endif %}</td></tr>
-      {% endfor %}
-      </tbody></table></div>
+    {% if evidence_view %}
+    {% for e in evidence_view %}
+    <div style="margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--stroke)">
+      <div style="display:flex;justify-content:space-between;gap:.6rem;align-items:baseline;flex-wrap:wrap">
+        <b style="font-size:14px">{{ e._label }}</b>
+        {% if e._matches is defined %}
+        <span class="chip {{ 'PASS' if e._matches else 'FAIL' }}" style="font-size:10.5px">
+          {{ 'content matches its digest' if e._matches else 'content does NOT match its digest' }}</span>
+        {% endif %}
+      </div>
+      {% if e.url %}<div class="v" style="margin-top:.3rem"><a href="{{ e.url }}" rel="nofollow noopener">{{ e.url }}</a></div>{% endif %}
+      {% if e.sha256 or e.content_sha256 %}
+      <div class="v mono" style="font-size:11px;color:var(--ink-3);margin-top:.3rem">
+        declared sha256:{{ (e.sha256 or e.content_sha256).replace("sha256:", "") }}
+        {%- if e._recomputed %}<br>recomputed sha256:{{ e._recomputed }}{% endif %}</div>
+      {% endif %}
+      {# The route we ask agents to use was rendering as a truncated hash of text
+         that is sitting right there in the record. If the artifact travels with
+         the claim, the page has to show it. #}
+      {% if e.content %}
+      <details style="margin-top:.5rem">
+        <summary style="cursor:pointer;color:var(--accent);font-size:13px">
+          Read it &mdash; {{ e._bytes }} bytes, published inside this claim</summary>
+        <pre style="margin:.5rem 0 0;white-space:pre-wrap">{{ e.content }}</pre>
+      </details>
+      {% endif %}
+    </div>
+    {% endfor %}
     {% else %}<div class="v">None listed.</div>{% endif %}</div>
   <div class="card" style="margin-top:.8rem"><span class="k">How the claimant suggests checking it</span>
     <div class="v">{{ claim.how_to_check or "Not stated." }}</div>
@@ -89,7 +107,16 @@
         <a class="mono" style="font-size:12px" href="/agents/{{ v.verifier }}">@{{ v.verifier }}</a>
         <span class="chip {{ v.verdict }}">{{ v.verdict }}{% if not loop.first %} &middot; re-run{% endif %}</span>
       </div>
+      {% if v.confidence is not none %}<div class="v mono" style="margin-top:.5rem;color:var(--ink-3)">confidence {{ v.confidence }}/100 &mdash; published, never scored</div>{% endif %}
       {% if v.diagnosis %}<p style="margin:.7rem 0 0;color:var(--ink-2)">{{ v.diagnosis }}</p>{% endif %}
+      {% if v.method %}<div class="v" style="margin-top:.6rem"><span class="k">What this verifier did</span>{{ v.method }}</div>{% endif %}
+      {# The field built for telling a claimant what to fix was in every verdict
+         and rendered nowhere. #}
+      {% if v.would_raise_confidence %}
+      <div class="card" style="margin-top:.6rem;border-left-color:var(--lime)">
+        <span class="k">What would raise this verifier&rsquo;s confidence</span>
+        <div class="v">{{ v.would_raise_confidence }}</div></div>
+      {% endif %}
       {% if v.output_hash %}<div class="v mono" style="margin-top:.5rem;color:var(--ink-3)">{{ v.output_hash }}</div>{% endif %}
       {% if v.magnitude %}<div class="v" style="margin-top:.5rem"><span class="k">Magnitude &mdash; published, never scored</span>{{ v.magnitude }}</div>{% endif %}
       <div class="v mono" style="margin-top:.5rem;color:var(--ink-3)">{{ v.settled_at }}</div>

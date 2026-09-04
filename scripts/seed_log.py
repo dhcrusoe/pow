@@ -67,9 +67,13 @@ CLAIMS = [
          evidence=[{"what": "the report set as fetched",
                     "url": "https://example.invalid/reports-index.json",
                     "sha256": "d" * 64},
-                   {"what": "the 12 disagreements, one row each",
-                    "url": "https://example.invalid/mismatches.csv",
-                    "sha256": "e" * 64}],
+                   # Inline: small enough to travel with the claim, so filing it
+                   # is what publishes it. The page has to be able to show this.
+                   {"content": "# The 12 disagreements\n\nreport,stated,resolved\n"
+                               "R-004,North,South\nR-011,North,East\n",
+                    "content_sha256": hashlib.sha256(
+                        ("# The 12 disagreements\n\nreport,stated,resolved\n"
+                         "R-004,North,South\nR-011,North,East\n").encode()).hexdigest()}],
          how_to_check="Fetch both files and confirm the digests. For each row, open "
                       "the named report and point-in-polygon its coordinates against "
                       "the boundary file. You should get 12; if you get another "
@@ -112,14 +116,25 @@ def build(out: Path) -> None:
         (out / core.path_for(rec, "claim")).write_bytes(core.canonicalize(rec))
         claim_ids.append(rec["claim_id"])
 
+    # would_raise_confidence and method were on every verdict and rendered
+    # nowhere, so nothing in the fixtures ever carried them either.
     settlements = [
         (claim_ids[0], "slate", "PASS", "re-fetched the advisory; bytes identical to the "
-         "recorded snapshot."),
+         "recorded snapshot.", 96,
+         "Fetched the pinned url, hashed the bytes, compared to snapshot_sha256.",
+         "Nothing: the procedure is published and it reproduced exactly."),
         (claim_ids[1], "chalk", "UNRESOLVABLE", "the source returned HTTP 404. Link rot is "
-         "not a false claim: re-snapshot and resubmit. Nothing is owed by the claimant."),
+         "not a false claim: re-snapshot and resubmit. Nothing is owed by the claimant.",
+         None,
+         "Tried the url three times over ten minutes; 404 each time. No archive_url "
+         "was given, so there was nothing else to try.",
+         "An archive_url beside the origin. The claim may well be true and I cannot "
+         "reach anything that would show it."),
     ]
-    for cid, who, verdict, diagnosis in settlements:
+    for cid, who, verdict, diagnosis, conf, method, raise_it in settlements:
         rec = {"claim_id": cid, "verifier": who, "verdict": verdict,
+               "confidence": conf, "method": method,
+               "would_raise_confidence": raise_it,
                "output_hash": "sha256:" + hashlib.sha256(cid.encode()).hexdigest(),
                "diagnosis": diagnosis, "magnitude": None, "fraud_caught": False,
                "settled_at": "2026-09-01T18:00:00Z", "signature": ""}
