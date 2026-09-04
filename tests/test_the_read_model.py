@@ -123,3 +123,50 @@ def test_the_generator_publishes_whole_records_not_just_summaries(site):
     # Full records: a summary would not carry the signature.
     assert all("signature" in c for c in doc["claims"])
     assert "never authoritative" in doc["note"]
+
+
+# GA4 is javascript, so it sees humans and cannot see a single agent — and agents
+# are the traffic that matters. Every /v0/ request is one; no human curls these.
+
+def test_traffic_counts_agent_requests(log):
+    from pow_api.main import create_app
+    from pow_api.backends import LocalBackend
+    app = create_app(LocalBackend(log))
+    c = app.test_client()
+    for _ in range(3):
+        c.get("/v0/claims", headers={"User-Agent": "agent-one/1.0"})
+    c.get("/v0/agents", headers={"User-Agent": "agent-two/1.0"})
+    t = c.get("/v0/health").get_json()["traffic"]
+    assert t["by_path"]["GET /v0/claims"] == 3
+    assert t["by_path"]["GET /v0/agents"] == 1
+    assert t["distinct_user_agents"] == 2
+
+
+def test_health_checks_do_not_drown_the_signal(log):
+    """Render polls health every few seconds. Counting it would bury everything
+    real under the noise of our own monitoring."""
+    from pow_api.main import create_app
+    from pow_api.backends import LocalBackend
+    c = create_app(LocalBackend(log)).test_client()
+    for _ in range(20):
+        c.get("/v0/health")
+    assert c.get("/v0/health").get_json()["traffic"]["by_path"] == {}
+
+
+def test_no_address_is_recorded(log):
+    """The user-agent says what arrived. The address would say who, and that is
+    not ours to keep."""
+    from pow_api.main import create_app
+    from pow_api.backends import LocalBackend
+    c = create_app(LocalBackend(log)).test_client()
+    c.get("/v0/claims", headers={"User-Agent": "x", "X-Forwarded-For": "203.0.113.9"})
+    body = json.dumps(c.get("/v0/health").get_json())
+    assert "203.0.113" not in body
+
+
+def test_the_counter_says_what_it_is(log):
+    from pow_api.main import create_app
+    from pow_api.backends import LocalBackend
+    c = create_app(LocalBackend(log)).test_client()
+    note = c.get("/v0/health").get_json()["traffic"]["note"]
+    assert "this worker only" in note and "not durable" in note

@@ -49,6 +49,35 @@ def create_app(backend=None) -> Flask:
         or app.config["BACKEND"]
     app.config["CEILINGS"] = Ceilings()
 
+    # Who is actually arriving. GA4 is javascript, so it sees humans and cannot
+    # see a single agent — and agents are the traffic that matters. Every /v0/
+    # request is one, because no human curls these.
+    #
+    # In memory, per worker, reset by every deploy. That is honest for a beta and
+    # it is why the numbers below say so rather than pretending to be a total.
+    # No IP is recorded: the user-agent tells us what arrived, and the address
+    # would only tell us who, which is not ours to keep.
+    app.config["TRAFFIC"] = {
+        "since": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "by_path": {}, "agents": set(), "referers": {},
+    }
+
+    @app.before_request
+    def count_it():
+        # Render polls health every few seconds; counting it would drown
+        # everything real in the noise of our own monitoring.
+        if request.path == "/v0/health" or not request.path.startswith("/v0/"):
+            return
+        t = app.config["TRAFFIC"]
+        key = f"{request.method} {request.path}"
+        t["by_path"][key] = t["by_path"].get(key, 0) + 1
+        ua = (request.headers.get("User-Agent") or "unknown")[:120]
+        t["agents"].add(ua)
+        ref = request.headers.get("Referer")
+        if ref:
+            t["referers"][ref[:200]] = t["referers"].get(ref[:200], 0) + 1
+        app.logger.info("hit %s ua=%r ref=%r", key, ua, ref)
+
     # request.get_data() reads the whole body into memory before anything looks
     # at it, so without a cap one POST is a denial of service on a 512MB box.
     # A record's inline evidence is capped at 262144 bytes; a megabyte leaves
@@ -418,8 +447,21 @@ def create_app(backend=None) -> Flask:
                         "log by one build. Enrolment, claim existence and assignment "
                         "always read the log.",
             }
+        t = app.config["TRAFFIC"]
         return jsonify({"ok": True, "core": core.__version__,
-                        "log_head": app.config["BACKEND"].head(), **plane})
+                        "log_head": app.config["BACKEND"].head(),
+                        "traffic": {
+                            "note": "In memory, this worker only, since the last "
+                                    "deploy. Health checks are excluded. Not a total, "
+                                    "and not durable — a beta instrument, published "
+                                    "because everything else here is.",
+                            "since": t["since"],
+                            "by_path": dict(sorted(t["by_path"].items(),
+                                                   key=lambda kv: -kv[1])),
+                            "distinct_user_agents": len(t["agents"]),
+                            "referers": t["referers"],
+                        },
+                        **plane})
 
     # Agents were learning the schema by writing to a permanent public log. A
     # failed POST costs nothing, but succeeding WRONGLY is forever — the first
