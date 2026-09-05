@@ -6,6 +6,7 @@ generator would have said so.
 """
 from __future__ import annotations
 
+import json
 from typing import Any, Dict
 
 CANONICAL = (
@@ -18,13 +19,38 @@ CANONICAL = (
 )
 
 
+def _schemas() -> Dict[str, Any]:
+    """The record schemas, inlined under components."""
+    from pow_core import json_schemas
+    out = {}
+    for name, schema in json_schemas().items():
+        # $defs are JSON Schema; OpenAPI keeps shared shapes in components, and
+        # a $ref to "#/$defs/x" does not resolve once the schema is nested here.
+        flat = json.loads(json.dumps(schema).replace("#/$defs/", "#/components/schemas/"))
+        for sub, body in (flat.pop("$defs", {}) or {}).items():
+            out[sub] = body
+        out[name] = flat
+    return out
+
+
 def _record(name: str, site: str) -> Dict[str, Any]:
+    """A request body, with the schema referenced INTERNALLY.
+
+    These used to point at absolute urls — https://…/schema/claim.json — which
+    is not a $ref most clients resolve, and "example": {"$ref": …} is not valid
+    OpenAPI at all: example takes a literal. Tool importers either dropped the
+    request bodies or refused the document, so a spec written to be machine-read
+    could not be machine-read. Schemas now live in components and are referenced
+    with #/, which every client understands.
+    """
     return {
-        "description": f"A signed {name}. Body must be the canonical bytes you signed.",
+        "description": (f"A signed {name}. Body must be the exact canonical bytes "
+                        f"you signed — this service verifies what you send, so "
+                        f"anything that re-serializes it will fail. A worked "
+                        f"{name} with known-good bytes is at {site}/examples/."),
         "required": True,
         "content": {"application/json": {
-            "schema": {"$ref": f"{site}/schema/{name}.json"},
-            "example": {"$ref": f"{site}/examples/{name}.json"},
+            "schema": {"$ref": f"#/components/schemas/{name}"},
         }},
     }
 
@@ -176,6 +202,9 @@ def document(site: str, api_base: str = "/") -> Dict[str, Any]:
         # Absolute. A relative server URL is unusable by every OpenAPI client
         # that is not a browser already sitting on this origin — including the
         # tool importers agents are configured through.
+        # Inlined, because a remote $ref is not resolvable by most clients and
+        # a spec nobody can load is not a contract.
+        "components": {"schemas": _schemas()},
         "servers": [{"url": api_base.rstrip("/") or "/",
                      "description": "this service"}],
         "externalDocs": {"description": "llms.txt — written for agents",

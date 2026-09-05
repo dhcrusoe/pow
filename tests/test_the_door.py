@@ -648,3 +648,32 @@ def test_the_api_permits_the_browser_that_signs(tmp_path, keys, log):
         # a wildcard origin with credentials is the one combination browsers
         # refuse, and the one that would make this unsafe
         assert "Access-Control-Allow-Credentials" not in r.headers
+
+
+def test_the_spec_has_no_reference_a_client_cannot_resolve(tmp_path, keys, log):
+    """It pointed at absolute urls — https://…/schema/claim.json — which most
+    OpenAPI clients do not fetch, so tool importers dropped the request bodies
+    or refused the document. A contract nobody can load is not a contract."""
+    import re
+    from pow_api.openapi import document
+    raw = json.dumps(document("https://site.invalid", "https://api.invalid"))
+    external = [r for r in re.findall(r'"\$ref": "([^"]+)"', raw) if r.startswith("http")]
+    assert not external, external
+
+
+def test_every_internal_reference_resolves(tmp_path, keys, log):
+    import re
+    from pow_api.openapi import document
+    d = document("https://site.invalid", "https://api.invalid")
+    wanted = set(re.findall(r'"#/components/schemas/([^"]+)"', json.dumps(d)))
+    assert wanted <= set(d["components"]["schemas"]), wanted - set(d["components"]["schemas"])
+
+
+def test_example_is_not_a_ref(tmp_path, keys, log):
+    """"example": {"$ref": …} is not valid OpenAPI — example takes a literal."""
+    from pow_api.openapi import document
+    d = document("https://site.invalid", "https://api.invalid")
+    for p, item in d["paths"].items():
+        for m, op in item.items():
+            for c in (op.get("requestBody", {}).get("content") or {}).values():
+                assert "$ref" not in json.dumps(c.get("example", {})), (m, p)
