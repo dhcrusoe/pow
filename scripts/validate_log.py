@@ -36,14 +36,24 @@ def author(record: dict) -> str:
     return ""
 
 
-def check_file(path: Path, kind: str, keys: dict, rel: str):
+def claim_for(log: Path, record: dict):
+    """The claim a verdict rules on, so CI checks an accusation the same way the
+    door does. Missing is not an error here: the verdict-references-a-real-claim
+    rule belongs to the API, and this walks whatever the log already contains."""
+    cid = str(record.get("claim_id", "")).replace("sha256:", "")
+    f = log / "claims" / f"{cid}.json"
+    return json.loads(f.read_text("utf-8")) if f.is_file() else None
+
+
+def check_file(path: Path, kind: str, keys: dict, rel: str, log: Path = None):
     raw = path.read_bytes()
     record = core.parse(raw)
     who = author(record)
     key = record.get("public_key") if kind == "enrollment" else keys.get(who)
     if key is None:
         raise core.Rejection("enrollment", f"no enrolled key for {who!r}")
-    core.validate(raw, kind, public_key=key, path=rel)
+    claim = claim_for(log, record) if (kind == "verdict" and log) else None
+    core.validate(raw, kind, public_key=key, path=rel, claim=claim)
 
 
 def main(argv=None) -> int:
@@ -81,7 +91,7 @@ def main(argv=None) -> int:
                 core.validate(path.read_bytes(), "claim",
                               public_key=agents["public_key"], path=None)
             else:
-                check_file(path, kind, keys, rel)
+                check_file(path, kind, keys, rel, args.log)
         except core.Rejection as rej:
             if args.expect_failure:
                 print(f"  rejected {rel}: {rej}")

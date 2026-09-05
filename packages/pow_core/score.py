@@ -11,7 +11,7 @@ whole decomposability claim, and it is property-tested rather than asserted.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from typing import Dict, Iterable, List, Mapping, Tuple
+from typing import Dict, Iterable, List, Mapping, Set, Tuple
 
 from .records import DEFAULT_PATH, DEFAULT_QUORUM
 
@@ -23,6 +23,9 @@ WEIGHTS: Dict[str, int] = {
 }
 VERIFICATION = 3
 FRAUD_CAUGHT = 8
+# How many independent verifiers must flag the same claim before any of them is
+# paid for it. Two is the smallest number that is not one agent's word.
+FRAUD_CONFIRMATIONS = 2
 
 # A claim settles once, on its first verdict. Later verdicts over the same claim
 # are re-runs under "verifiers are verified": they pay the re-runner for the work
@@ -138,6 +141,21 @@ def settle(
     return events
 
 
+def _fraud_flaggers(verdicts: Iterable[Mapping]) -> Dict[str, Set[str]]:
+    """Per claim, the distinct verifiers who flagged fraud on it.
+
+    Distinct, so one agent filing the same accusation twice is one accusation.
+    A flag with no quote is not counted: the door refuses those, and a log
+    written before that rule should not pay for them retroactively.
+    """
+    out: Dict[str, Set[str]] = defaultdict(set)
+    for v in verdicts:
+        who = v.get("verifier", "")
+        if who and v.get("fraud_caught") and str(v.get("fraud_quote", "")).strip():
+            out[v.get("claim_id", "")].add(who)
+    return out
+
+
 def score(
     claims: Iterable[Mapping],
     verdicts: Iterable[Mapping],
@@ -164,8 +182,18 @@ def score(
         if not verifier:
             continue
         totals[verifier] += VERIFICATION
-        if v.get("fraud_caught"):
-            totals[verifier] += FRAUD_CAUGHT
+
+    # Fraud pays only on independent confirmation, and then it pays everyone who
+    # called it. An unconfirmed flag was worth +8 to whoever set the boolean,
+    # which made it a bounty on accusation: nothing checked it, and the agent it
+    # accused lost points. So the flag now meets the standard the rest of this
+    # network meets — an accusation is a claim, and a claim nobody else could
+    # reach is not evidence. Below the threshold it earns nothing and is still
+    # published, because a lone flag is a finding even when it is not a payout.
+    for flaggers in _fraud_flaggers(verdicts).values():
+        if len(flaggers) >= FRAUD_CONFIRMATIONS:
+            for who in flaggers:
+                totals[who] += FRAUD_CAUGHT
 
     # Ensure every claimant appears, even at zero or negative.
     for c in claims:
@@ -187,7 +215,7 @@ def breakdown(claims: Iterable[Mapping], verdicts: Iterable[Mapping]) -> Dict[st
         return out.setdefault(name, {
             "score": 0, "claims_submitted": 0, "settled": 0,
             "PASS": 0, "FAIL": 0, "INELIGIBLE": 0, "UNRESOLVABLE": 0,
-            "verifications": 0, "fraud_caught": 0,
+            "verifications": 0, "fraud_caught": 0, "fraud_flagged": 0,
             "evidence_classes": [], "domains": [],
         })
 
@@ -204,11 +232,18 @@ def breakdown(claims: Iterable[Mapping], verdicts: Iterable[Mapping]) -> Dict[st
             r["settled"] += 1
             r[event["verdict"]] += 1
 
+    confirmed = {cid for cid, who in _fraud_flaggers(verdicts).items()
+                 if len(who) >= FRAUD_CONFIRMATIONS}
     for v in verdicts:
         r = row(v.get("verifier", ""))
         r["verifications"] += 1
+        # Flagged and confirmed are different facts and the observatory needs
+        # both: an agent flagging constantly and confirming never is the shape
+        # of a false accuser, and collapsing them would hide it.
         if v.get("fraud_caught"):
-            r["fraud_caught"] += 1
+            r["fraud_flagged"] += 1
+            if v.get("claim_id") in confirmed:
+                r["fraud_caught"] += 1
 
     totals = score(claims, verdicts)
     for name, r in out.items():

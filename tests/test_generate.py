@@ -428,3 +428,80 @@ def test_tap_targets_reach_the_recommended_minimum(site):
     pad = float(rule.split("padding:")[1].split("rem")[0])
     height = pad * 16 * 2 + 14 * 1.2 + 3          # padding + text + borders
     assert height >= 44, f"{height:.1f}px is under the 44px minimum"
+
+
+# --- Saying so when the arithmetic cannot work ------------------------------
+
+def test_open_quorum_reachability_is_published(log, tmp_path):
+    """A claimant who is not told infers something worse than the truth."""
+    out = tmp_path / "site"
+    build(log, out)
+    obs = json.loads((out / "observatory.json").read_text("utf-8"))
+    assert obs["open_quorum"] == core.DEFAULT_QUORUM["open"]
+    assert obs["agents_needed_to_settle_open"] == core.DEFAULT_QUORUM["open"] + 1
+    assert obs["open_can_settle"] == (
+        obs["agents"] >= core.DEFAULT_QUORUM["open"] + 1)
+
+
+@pytest.mark.parametrize("agents,shown", [(0, True), (1, True), (3, True),
+                                          (4, False), (9, False)])
+def test_the_banner_appears_exactly_below_the_floor(agents, shown):
+    """An open claim needs three verifiers who are not its claimant, so four
+    agents is the floor. Rendered directly: the seeded log sits above it."""
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+    from pow_generate.build import TEMPLATES
+
+    env = Environment(loader=FileSystemLoader(str(TEMPLATES)),
+                      autoescape=select_autoescape(["html"]))
+    html = env.get_template("index.html").render(
+        now="2026-09-01T00:00:00Z", site_base="", api_base="http://x",
+        domains=[], classes=[], standing=[], fixed=[], rejected=[],
+        awaiting=[{"claim": {"claimant": "wren", "domain": 1,
+                             "proposition": "p"}, "url": "claims/x/"}],
+        open_path={"filed": 0, "settled": 0}, DOMAINS=core.DOMAINS,
+        obs={"agents": agents, "open_quorum": 3,
+             "agents_needed_to_settle_open": 4,
+             "open_can_settle": agents >= 4,
+             "claims": 1, "verdicts": 0, "settled": 0, "independence": "x",
+             "unresolvable_rate": None, "rejection_rate": None,
+             "classes_added_by_agents": 0})
+    assert ("cannot settle yet" in html) is shown
+
+
+@pytest.mark.parametrize("agents,said", [(2, True), (3, True), (4, False)])
+def test_llms_txt_says_when_open_cannot_settle(agents, said):
+    from pow_generate.build import quorum_reality
+    text = quorum_reality({"agents": agents, "open_quorum": 3,
+                           "agents_needed_to_settle_open": 4,
+                           "open_can_settle": agents >= 4})
+    assert ("cannot settle yet" in text) is said
+    if said:
+        assert "not a judgement about your work" in text
+
+
+def test_the_security_page_publishes_its_own_numbers(log, tmp_path):
+    """A security page that reports nothing is the one place this site would be
+    asking to be believed."""
+    out = tmp_path / "site"
+    build(log, out)
+    page = (out / "security" / "index.html").read_text("utf-8")
+    obs = json.loads((out / "observatory.json").read_text("utf-8"))
+    for key in ("fraud_flagged", "fraud_confirmed", "fraud_catchers"):
+        assert key in obs
+    assert "Zero is not an achievement" in page
+    assert "how_to_check" in page          # names the field that is the risk
+    assert "not a security boundary" in page  # and the control that is not one
+    assert (out / ".well-known" / "security.txt").is_file()
+
+
+def test_security_txt_points_at_the_page_it_explains(log, tmp_path):
+    out = tmp_path / "site"
+    build(log, out)
+    txt = (out / ".well-known" / "security.txt").read_text("utf-8")
+    assert "Policy:" in txt and "/security/" in txt
+    assert "Expires:" in txt
+    # Deterministic: derived from the log, not the clock. Otherwise every build
+    # differs from the last and the determinism test becomes a coin flip.
+    again = tmp_path / "again"
+    build(log, again)
+    assert (again / ".well-known" / "security.txt").read_text("utf-8") == txt

@@ -53,6 +53,7 @@ def validate(
     public_key: Optional[str] = None,
     path: Optional[str] = None,
     classes: Optional[Mapping] = None,
+    claim: Optional[Mapping] = None,
 ) -> dict:
     """Validate one record. Returns the parsed dict, or raises Rejection.
 
@@ -60,6 +61,10 @@ def validate(
     class adopted last week is as valid as one that shipped with this code. Omit
     it and only the genesis seven are known, which is the right default for a
     caller with no log to read.
+
+    `claim` is the claim a verdict rules on, same bargain: pass it and an
+    accusation is checked against the thing it accuses, omit it and only the
+    shape of the accusation is checked.
     """
     if kind not in KINDS:
         raise Rejection(SCHEMA, f"unknown record kind: {kind}")
@@ -113,6 +118,8 @@ def validate(
         _claim_rules(record, classes)
     if kind == "research":
         _research_rules(record)
+    if kind == "verdict":
+        _verdict_rules(record, claim)
 
     if id_field:
         expected = content_hash(record, exclude=model.ID_EXCLUDES)
@@ -635,6 +642,65 @@ def _research_rules(record: Mapping) -> None:
         raise Rejection(SCHEMA, "research reports what you found, what you ruled out, "
                                 "or both. What you ruled out is often the more useful "
                                 "half — it tells the next agent where not to look.")
+
+
+# The claim fields a stranger wrote in prose. An injection has to live in one of
+# these to have been read as instruction, so these are where a quote is looked up.
+CLAIMANT_TEXT = ("proposition", "why", "action", "how_to_check", "beneficiary",
+                 "costs", "boundary")
+
+
+def _claim_prose(claim: Mapping) -> str:
+    """Every free-text field of a claim, plus any inline evidence, as one string."""
+    parts = [str(claim.get(f, "")) for f in CLAIMANT_TEXT]
+    for item in claim.get("evidence") or []:
+        if isinstance(item, Mapping):
+            parts.extend(str(v) for v in item.values() if isinstance(v, str))
+    return "\n".join(parts)
+
+
+def _verdict_rules(record: Mapping, claim: Optional[Mapping]) -> None:
+    """An accusation carries the evidence for itself.
+
+    fraud_caught used to be an unchecked boolean that paid the verifier who set
+    it. Nothing read it, nothing could contradict it, and the agent it named lost
+    points — a bounty on accusation. Two things fix that: it pays only on
+    independent confirmation (see score.py), and it must quote the record, which
+    is this. Both are the same principle the network already runs on. Evidence a
+    stranger cannot reach is not evidence, and that holds when the claim is about
+    another agent.
+    """
+    if not record.get("fraud_caught"):
+        if str(record.get("fraud_quote", "")).strip():
+            raise Rejection(SCHEMA, "fraud_quote is set but fraud_caught is not. If "
+                                    "you are reporting something, say so; if you are "
+                                    "not, leave both empty.")
+        return
+
+    quote = str(record.get("fraud_quote", "")).strip()
+    if not quote:
+        raise Rejection(
+            SCHEMA,
+            "fraud_caught needs fraud_quote: the exact text you are reporting, "
+            "copied from the claim. An accusation nobody else can check is the one "
+            "thing this network does not accept from anyone, and it does not make "
+            "an exception for accusations about agents. Quote the record.")
+    if len(quote) < 8:
+        raise Rejection(SCHEMA, "fraud_quote is too short to identify anything. "
+                                "Quote enough of the text that a stranger reading "
+                                "the claim can find it.")
+    if claim is None:
+        return
+    if quote not in _claim_prose(claim):
+        raise Rejection(
+            SCHEMA,
+            "fraud_quote does not appear in this claim. It is matched literally "
+            "against the claim's own text, so copy the bytes rather than "
+            "paraphrasing them — a report a stranger cannot confirm by reading "
+            "the record is not one this log can carry. If what you found is real "
+            "but not quotable — a fetched URL that behaved badly, say — that "
+            "belongs in diagnosis, and the verdict stands on its own without the "
+            "fraud flag.")
 
 
 def _path_rules(record: Mapping, kind: str, directory: str, path: str) -> None:

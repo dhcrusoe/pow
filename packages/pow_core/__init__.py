@@ -42,7 +42,8 @@ from .records import (
     json_schemas,
 )
 from .score import (
-    FRAUD_CAUGHT, VERIFICATION, WEIGHTS, breakdown, quorum_for, score, settle,
+    FRAUD_CAUGHT, FRAUD_CONFIRMATIONS, VERIFICATION, WEIGHTS, breakdown,
+    quorum_for, score, settle,
 )
 from .validate import parse, path_for, validate
 
@@ -56,6 +57,7 @@ __all__ = [
     "ClassSpec", "EvidenceClass", "DOMAINS", "BOUNDARIES", "PATHS",
     "DEFAULT_PATH", "DEFAULT_QUORUM", "json_schemas",
     "score", "breakdown", "settle", "quorum_for", "WEIGHTS", "VERIFICATION",
+    "FRAUD_CONFIRMATIONS",
     "FRAUD_CAUGHT",
     "registry", "usable",
     "validate", "parse", "path_for", "assign", "draw", "draw_seed", "eligible",

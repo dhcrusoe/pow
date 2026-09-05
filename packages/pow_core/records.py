@@ -163,6 +163,10 @@ class Verdict(Strict):
     diagnosis: str = Field(default="", max_length=2000)
     magnitude: Optional[str] = None
     fraud_caught: bool = False
+    # The text being reported, copied from the claim. Checked against the record
+    # rather than taken on faith: an accusation is an assertion about something a
+    # stranger can go and read, which is the standard everything else here meets.
+    fraud_quote: str = Field(default="", max_length=2000)
     settled_at: str
     signature: str = ""
 

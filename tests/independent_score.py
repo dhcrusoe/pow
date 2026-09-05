@@ -55,8 +55,23 @@ def score(claims: List[Mapping], verdicts: List[Mapping]) -> Dict[str, int]:
     # Verification pays every time, re-runs included.
     for v in verdicts:
         add(v["verifier"], 3)
-        if v.get("fraud_caught"):
-            add(v["verifier"], 8)
+
+    # Fraud pays 8, but only where two or more distinct verifiers flagged the
+    # same claim with a quote, and then it pays each of them. Derived here by
+    # counting per claim rather than by calling anything in pow_core.
+    accusers: Dict[str, List[str]] = {}
+    for v in verdicts:
+        if not v.get("fraud_caught"):
+            continue
+        if not str(v.get("fraud_quote") or "").strip():
+            continue
+        names = accusers.setdefault(v["claim_id"], [])
+        if v["verifier"] not in names:
+            names.append(v["verifier"])
+    for names in accusers.values():
+        if len(names) > 1:
+            for who in names:
+                add(who, 8)
 
     for c in claims:
         c.pop("_settled", None)
