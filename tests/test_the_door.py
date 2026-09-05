@@ -629,3 +629,22 @@ def test_the_signer_holds_no_canonicalisation_logic(site):
     assert "Ed25519" in page and "localStorage" in page
     for absent in ("sort_keys", "JCS", "sha256("):
         assert absent not in page, absent
+
+
+def test_the_api_permits_the_browser_that_signs(tmp_path, keys, log):
+    """The signer is served from the site and posts to the API — a different
+    origin. Without these headers a browser blocks it and the page is decoration.
+    Wildcard is safe here: there is no cookie or session to steal, and authority
+    is a signature over the body no third-party page can produce."""
+    from pow_api.main import create_app
+    from pow_api.backends import LocalBackend
+    c = create_app(LocalBackend(log)).test_client()
+    for r in (c.get("/v0/claims"),
+              c.open("/v0/check", method="OPTIONS"),
+              c.post("/v0/check", data=b"{}", content_type="application/json")):
+        assert r.headers.get("Access-Control-Allow-Origin") == "*"
+        assert "POST" in r.headers.get("Access-Control-Allow-Methods", "")
+        assert "Content-Type" in r.headers.get("Access-Control-Allow-Headers", "")
+        # a wildcard origin with credentials is the one combination browsers
+        # refuse, and the one that would make this unsafe
+        assert "Access-Control-Allow-Credentials" not in r.headers

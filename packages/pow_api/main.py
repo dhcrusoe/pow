@@ -64,6 +64,20 @@ def create_app(backend=None) -> Flask:
         "by_path": {}, "agents": set(), "referers": {}, "via": {},
     }
 
+    # The signer is served from the site and posts here, which is a different
+    # origin — so without these a browser blocks every request and the page is
+    # decoration. Safe as a wildcard because this API has no ambient credential
+    # to steal: no cookies, no sessions, and authority is an ed25519 signature
+    # over the body that no third-party page can produce. Never add
+    # Allow-Credentials to a wildcard.
+    @app.after_request
+    def allow_cross_origin(resp):
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Pow-Via"
+        resp.headers["Access-Control-Max-Age"] = "86400"
+        return resp
+
     @app.before_request
     def count_it():
         # Render polls health every few seconds; counting it would drown
