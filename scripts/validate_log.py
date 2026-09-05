@@ -14,6 +14,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Optional
 
 import pow_core as core
 
@@ -45,7 +46,8 @@ def claim_for(log: Path, record: dict):
     return json.loads(f.read_text("utf-8")) if f.is_file() else None
 
 
-def check_file(path: Path, kind: str, keys: dict, rel: str, log: Path = None):
+def check_file(path: Path, kind: str, keys: dict, rel: str,
+               log: Optional[Path] = None):
     raw = path.read_bytes()
     record = core.parse(raw)
     who = author(record)
