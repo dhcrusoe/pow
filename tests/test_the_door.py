@@ -526,3 +526,106 @@ def test_the_path_decision_comes_before_the_document_asks_for_it(site):
     txt = (site / "llms.txt").read_text("utf-8")
     assert txt.index("Two paths. Decide this first") < txt.index("## Enroll first")
     assert "Not sure? Open." in txt
+
+
+# Three access paths, and the properties that make each one honest.
+
+def test_the_spec_documents_reading_as_well_as_writing(tmp_path, keys, log):
+    """It described eight write endpoints and none of the reads, so anything
+    configured from it concluded the network was write-only."""
+    from pow_api.openapi import document
+    d = document("https://site.invalid", "https://api.invalid")
+    ops = {(m.upper(), p) for p, item in d["paths"].items() for m in item}
+    for want in [("GET", "/v0/claims"), ("GET", "/v0/claims/{claim_id}"),
+                 ("GET", "/v0/verdicts"), ("GET", "/v0/agents"),
+                 ("GET", "/v0/agents/{pseudonym}"), ("GET", "/v0/classes"),
+                 ("GET", "/v0/research")]:
+        assert want in ops, want
+    assert ("POST", "/v0/claims") in ops        # merged, not replaced
+
+
+def test_the_spec_names_an_absolute_origin(tmp_path, keys, log):
+    """A relative server url is unusable by every client that is not already
+    sitting on this host — including the importers agents are configured with."""
+    from pow_api.openapi import document
+    d = document("https://site.invalid", "https://api.invalid/")
+    assert d["servers"][0]["url"] == "https://api.invalid"
+
+
+def test_every_operation_is_described_well_enough_to_choose(tmp_path, keys, log):
+    """Descriptions are how a model decides which call to make."""
+    from pow_api.openapi import document
+    d = document("https://site.invalid", "https://api.invalid")
+    for p, item in d["paths"].items():
+        for m, op in item.items():
+            assert op.get("operationId"), (m, p)
+            assert len(op.get("description", "") or op.get("summary", "")) > 20, (m, p)
+
+
+def test_a_client_can_file_with_no_canonicaliser_of_its_own(tmp_path, keys, log):
+    """The whole basis of the browser signer: sign the bytes handed back, put the
+    signature in the slot, post. No JCS implementation anywhere on the client."""
+    import base64
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from pow_api.main import create_app
+    from pow_api.backends import LocalBackend
+
+    c = create_app(LocalBackend(log)).test_client()
+    sk = Ed25519PrivateKey.generate()
+    pub = base64.b64encode(sk.public_key().public_bytes_raw()).decode()
+    draft = {"claimant": "wren", "domain": 1, "path": "open",
+             "proposition": "A published set contradicts itself in twelve places.",
+             "action": "Read every report and resolved its coordinates against boundaries.",
+             "evidence": [{"what": "the set", "url": "https://example.invalid/a.json"}],
+             "boundary": "no one at risk becomes evidence",
+             "valid_as_of": "2026-01-01", "submitted_at": "2026-01-01T00:00:00Z"}
+    d = c.post("/v0/check?kind=claim", data=json.dumps(draft),
+               content_type="application/json").get_json()
+    sig = base64.b64encode(sk.sign(d["bytes_to_sign"].encode())).decode()
+    final = d["bytes_to_post_template"].replace(d["signature_slot"], sig).encode()
+
+    parsed = json.loads(final)
+    assert final == core.canonicalize(parsed)          # byte-identical
+    assert parsed["claim_id"] == d["claim_id"]["expected"]
+    core.validate(final, "claim", public_key=pub, path=core.path_for(parsed, "claim"))
+
+
+def test_bytes_to_sign_covers_the_record_that_will_exist(tmp_path, keys, log):
+    """Signing excludes only 'signature', so claim_id has to be in the record
+    already — otherwise the signature covers a record nobody will ever post."""
+    from pow_api.main import create_app
+    from pow_api.backends import LocalBackend
+    c = create_app(LocalBackend(log)).test_client()
+    d = c.post("/v0/check?kind=claim", data=json.dumps(
+        {"claimant": "wren", "domain": 1, "path": "open",
+         "proposition": "A published set contradicts itself in twelve places.",
+         "action": "Read every report and resolved its coordinates against boundaries.",
+         "evidence": [{"what": "the set", "url": "https://example.invalid/a.json"}],
+         "boundary": "no one at risk", "valid_as_of": "2026-01-01",
+         "submitted_at": "2026-01-01T00:00:00Z"}),
+        content_type="application/json").get_json()
+    assert '"claim_id"' in d["bytes_to_sign"]
+    assert '"signature"' not in d["bytes_to_sign"]
+
+
+def test_a_write_says_where_it_came_from(tmp_path, keys, log):
+    """Three surfaces are about to exist; without this an enrolment arrives with
+    no way to tell which one produced it."""
+    from pow_api.main import create_app
+    from pow_api.backends import LocalBackend
+    c = create_app(LocalBackend(log)).test_client()
+    c.get("/v0/claims?via=signer")
+    c.get("/v0/claims?via=mcp")
+    c.get("/v0/claims")
+    via = c.get("/v0/health").get_json()["traffic"]["via"]
+    assert via["signer"] == 1 and via["mcp"] == 1 and via["-"] == 1
+
+
+def test_the_signer_holds_no_canonicalisation_logic(site):
+    """If it did, it could drift out of agreement with the network about what a
+    record is. It sends the draft to /v0/check and signs what comes back."""
+    page = (site / "sign" / "index.html").read_text("utf-8")
+    assert "bytes_to_post_template" in page and "signature_slot" in page
+    assert "Ed25519" in page and "localStorage" in page
+    for absent in ("sort_keys", "JCS", "sha256("):
+        assert absent not in page, absent

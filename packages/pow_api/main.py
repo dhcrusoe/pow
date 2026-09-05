@@ -26,6 +26,8 @@ from .backends import from_env, read_plane_from_env
 from .limits import Ceilings, REASON
 
 SITE_BASE = os.environ.get("SITE_BASE", "http://localhost:8080").rstrip("/")
+# Distinctive enough that it cannot occur in a real base64 signature.
+SIGNATURE_SLOT = "<<SIGNATURE>>"
 
 
 def utcnow() -> str:
@@ -59,7 +61,7 @@ def create_app(backend=None) -> Flask:
     # would only tell us who, which is not ours to keep.
     app.config["TRAFFIC"] = {
         "since": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "by_path": {}, "agents": set(), "referers": {},
+        "by_path": {}, "agents": set(), "referers": {}, "via": {},
     }
 
     @app.before_request
@@ -76,7 +78,9 @@ def create_app(backend=None) -> Flask:
         ref = request.headers.get("Referer")
         if ref:
             t["referers"][ref[:200]] = t["referers"].get(ref[:200], 0) + 1
-        app.logger.info("hit %s ua=%r ref=%r", key, ua, ref)
+        via = (request.args.get("via") or request.headers.get("X-Pow-Via") or "-")[:32]
+        t["via"][via] = t["via"].get(via, 0) + 1
+        app.logger.info("hit %s via=%s ua=%r ref=%r", key, via, ua, ref)
 
     # request.get_data() reads the whole body into memory before anything looks
     # at it, so without a cap one POST is a denial of service on a 512MB box.
@@ -460,6 +464,7 @@ def create_app(backend=None) -> Flask:
                                                    key=lambda kv: -kv[1])),
                             "distinct_user_agents": len(t["agents"]),
                             "referers": t["referers"],
+                            "via": t["via"],
                         },
                         **plane})
 
@@ -469,6 +474,13 @@ def create_app(backend=None) -> Flask:
     # This is where you find that out. It writes nothing, commits nothing, and
     # counts against no ceiling, because a service that makes you guess is a
     # service that fills its own log with guesses.
+    # Where a write came from. Three surfaces are about to exist and without
+    # this an enrolment arrives with no way to tell which one produced it — the
+    # same reason the traffic counter exists.
+    def came_via() -> str:
+        v = (request.args.get("via") or request.headers.get("X-Pow-Via") or "")[:32]
+        return "".join(c for c in v if c.isalnum() or c in "-_.") or "direct"
+
     KIND_HINTS = (
         ("verdict", ("verdict", "verifier")),
         ("seal", ("seal_id", "commitment")),
@@ -512,8 +524,23 @@ def create_app(backend=None) -> Flask:
                 }
                 out[id_field]["matches"] = (
                     out[id_field]["yours"] == out[id_field]["expected"])
-            out["bytes_to_sign"] = core.signing_payload(record).decode()
-            out["bytes_to_post"] = core.canonicalize(record).decode()
+            # Signing excludes only 'signature', so claim_id must already be in
+            # the record when you sign it. Fill in the one we computed above,
+            # or bytes_to_sign covers a record that will never exist.
+            filled = dict(record)
+            if id_field:
+                filled[id_field] = out[id_field]["expected"]
+            out["bytes_to_sign"] = core.signing_payload(filled).decode()
+            out["bytes_to_post"] = core.canonicalize(filled).decode()
+            # The last hard step, removed. Sign bytes_to_sign, then substitute
+            # your base64 signature for the slot below and POST the result.
+            # Base64 needs no JSON escaping and the slot sits where JCS already
+            # ordered it, so the substitution is byte-exact — which means a
+            # client needs ed25519, base64 and a string replace, and no
+            # canonicalisation implementation of its own.
+            out["signature_slot"] = SIGNATURE_SLOT
+            out["bytes_to_post_template"] = core.canonicalize(
+                {**filled, "signature": SIGNATURE_SLOT}).decode()
         except Exception as exc:                      # malformed beyond canonicalising
             out["note"] = f"could not canonicalise this record: {exc}"
 
@@ -567,7 +594,9 @@ def create_app(backend=None) -> Flask:
     @app.get("/openapi.json")
     def openapi():
         from .openapi import document
-        return jsonify(document(SITE_BASE))
+        # The API's own origin, so servers is absolute. A relative one is
+        # unusable by every client that is not already sitting on this host.
+        return jsonify(document(SITE_BASE, request.host_url))
 
     @app.get("/")
     def root():

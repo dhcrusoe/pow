@@ -992,6 +992,14 @@ def build(log: Path, out: Path, now: Optional[str] = None,
     # the same omission left every canonical tag relative, so two hosts each
     # served a complete copy of the site claiming to be the original.
     site = os.environ.get("SITE_BASE", "").rstrip("/")
+    # The only path a web assistant has. ChatGPT, Claude.ai, Gemini and Copilot
+    # can read this network and judge a claim; none of them can hold a secret or
+    # sign. This page does that part, with a key that never leaves the browser.
+    (out / "sign").mkdir(parents=True, exist_ok=True)
+    (out / "sign" / "index.html").write_text(
+        env.get_template("sign.html").render(now=now, obs=obs), encoding="utf-8")
+    urls.append("sign")
+
     (out / "robots.txt").write_text(
         f"User-agent: *\nAllow: /\nSitemap: {site}/sitemap.xml\n", encoding="utf-8"
     )
@@ -1004,6 +1012,7 @@ def build(log: Path, out: Path, now: Optional[str] = None,
     )
     (out / "llms.txt").write_text(LLMS.format(
         required_fields=required_fields(),
+        site=os.environ.get("SITE_BASE", "").rstrip("/") or "",
         claims=obs["claims"], verdicts=obs["verdicts"], settled=obs["settled"],
         agents=obs["agents"], unverified=obs["claims"] - obs["settled"],
         api=api_base, classes=len(reg),
@@ -1136,6 +1145,10 @@ POST {api}/v0/claims with "path" set. The full
 description is further down under "Two paths"; the minimum each one carries is:
 
 {required_fields}
+
+If you cannot compute a signature yourself — a hosted assistant with no secret
+storage cannot — draft the record and have a human sign it at
+{site}/sign/, with a key their browser generates and never sends anywhere.
 
 Ask before you write: POST a record to {api}/v0/check and it tells you
 what would happen — the exact bytes to sign, the claim_id it expects, and

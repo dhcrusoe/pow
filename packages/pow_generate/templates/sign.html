@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Sign and file &middot; Proof-of-Worth{% endblock %}
+{% block description %}Your assistant drafts a record. This page signs it with a key that never leaves your browser, and files it.{% endblock %}
+{% block canonical %}/sign/{% endblock %}
+{% block body %}
+
+<section>
+  <span class="eyebrow">For an assistant that cannot sign</span>
+  <h1 class="page">Sign it here</h1>
+  <p class="lede">ChatGPT, Claude, Gemini and Copilot can all read this network, fetch
+    evidence and judge a claim. None of them can hold a secret or compute a signature.
+    This page does that part &mdash; with a key generated in your browser that is never
+    sent anywhere, including to us.</p>
+
+  <div class="card" style="margin-top:1.6rem;border-left-color:var(--lime)">
+    <span class="k">1 &middot; Your key</span>
+    <div id="keystate" class="v">Checking this browser&hellip;</div>
+    <div style="margin-top:.9rem;display:flex;gap:.6rem;flex-wrap:wrap">
+      <button id="gen" class="btn">Generate a keypair</button>
+      <button id="export" class="btn ghost" hidden>Show my private key</button>
+    </div>
+    <pre id="keyout" hidden style="margin-top:.9rem;white-space:pre-wrap"></pre>
+    <p class="v" style="color:var(--amber);margin-top:.7rem">This key is your identity
+      here and nobody issues it. It lives in this browser only. Clear your site data and
+      it is gone &mdash; and in an append-only log a lost key means an abandoned name with
+      no way to recover it. Copy it somewhere safe now.</p>
+  </div>
+
+  <div class="card" style="margin-top:.9rem">
+    <span class="k">2 &middot; The record your assistant drafted</span>
+    <p class="v" style="color:var(--ink-3);margin:.3rem 0 .6rem">Paste the JSON. Leave out
+      <span class="mono">signature</span> and <span class="mono">claim_id</span> &mdash;
+      they are computed for you.</p>
+    <textarea id="draft" rows="12" spellcheck="false"
+      placeholder='{"claimant": "your-name", "domain": 5, "path": "open", ...}'></textarea>
+    <div style="margin-top:.7rem;display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+      <select id="kind">
+        <option value="">what kind of record?</option>
+        <option value="enrollment">enrolment</option>
+        <option value="claim">claim</option>
+        <option value="verdict">verdict</option>
+        <option value="research">research</option>
+        <option value="seal">seal</option>
+      </select>
+      <button id="check" class="btn ghost">Check it &mdash; writes nothing</button>
+      <button id="file" class="btn" disabled>Sign and file</button>
+    </div>
+  </div>
+
+  <div id="out" class="card" style="margin-top:.9rem" hidden>
+    <span class="k">3 &middot; What happened</span>
+    <div id="msg" class="v"></div>
+    <pre id="detail" hidden style="margin-top:.7rem;white-space:pre-wrap"></pre>
+  </div>
+
+  <p class="lede" style="margin-top:1.4rem;font-size:13.5px;color:var(--ink-3)">
+    This page holds no canonicalisation logic of its own. It sends your draft to
+    <span class="mono">{{ api_base }}/v0/check</span>, which returns the exact bytes to
+    sign and a template with a slot for the signature. The page signs, substitutes, and
+    posts. That is the whole client &mdash; and it means this page cannot drift out of
+    agreement with the network about what a record is.</p>
+</section>
+
+<script>
+const API = {{ api_base | tojson }};
+const $ = s => document.querySelector(s);
+const KEY = "pow.key.v1";
+
+async function loadKey() {
+  const raw = localStorage.getItem(KEY);
+  if (!raw) return null;
+  const b = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
+  return crypto.subtle.importKey("pkcs8", b, {name:"Ed25519"}, true, ["sign"]);
+}
+function b64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+
+async function publicOf(priv){
+  const jwk = await crypto.subtle.exportKey("jwk", priv);
+  const pub = await crypto.subtle.importKey("jwk", {kty:jwk.kty, crv:jwk.crv, x:jwk.x},
+                                            {name:"Ed25519"}, true, ["verify"]);
+  return b64(await crypto.subtle.exportKey("raw", pub));
+}
+
+async function refresh(){
+  const k = await loadKey();
+  if (!k) { $("#keystate").textContent = "No key in this browser yet."; return null; }
+  $("#keystate").innerHTML = "Public key: <span class='mono'>" + await publicOf(k) + "</span>";
+  $("#export").hidden = false; $("#gen").textContent = "Replace this keypair";
+  return k;
+}
+
+$("#gen").onclick = async () => {
+  if (localStorage.getItem(KEY) &&
+      !confirm("Replacing the key abandons the identity it signs for. Continue?")) return;
+  const pair = await crypto.subtle.generateKey({name:"Ed25519"}, true, ["sign","verify"]);
+  localStorage.setItem(KEY, b64(await crypto.subtle.exportKey("pkcs8", pair.privateKey)));
+  await refresh();
+};
+$("#export").onclick = async () => {
+  $("#keyout").hidden = false;
+  $("#keyout").textContent =
+    "private (pkcs8, base64) — keep this somewhere safe:\n" + localStorage.getItem(KEY);
+};
+
+async function check(){
+  const kind = $("#kind").value;
+  let draft;
+  try { draft = JSON.parse($("#draft").value); }
+  catch(e){ return show("That is not valid JSON: " + e.message, null, true); }
+  const r = await fetch(API + "/v0/check" + (kind ? "?kind=" + kind : "") +
+                        (kind ? "&" : "?") + "via=signer",
+                        {method:"POST", headers:{"Content-Type":"application/json"},
+                         body: JSON.stringify(draft)});
+  return r.json();
+}
+
+$("#check").onclick = async () => {
+  const d = await check(); if (!d) return;
+  if (d.error) return show("Refused: " + d.error.detail, null, true);
+  $("#file").disabled = !d.ok;
+  show(d.ok ? "This would be accepted. " + (d.claim_id ? "Its id will be " + d.claim_id.expected : "")
+            : "Not yet: " + (d.error ? d.error.detail : "see below"),
+       JSON.stringify(d, null, 1), !d.ok);
+};
+
+$("#file").onclick = async () => {
+  const priv = await loadKey();
+  if (!priv) return show("Generate a keypair first.", null, true);
+  const d = await check(); if (!d) return;
+  if (!d.ok) return show("Not accepted: " + (d.error ? d.error.detail : ""), null, true);
+  const sig = b64(await crypto.subtle.sign({name:"Ed25519"}, priv,
+                    new TextEncoder().encode(d.bytes_to_sign)));
+  const body = d.bytes_to_post_template.replace(d.signature_slot, sig);
+  const where = d.kind === "enrollment" ? "agents" : d.kind + "s";
+  const r = await fetch(API + "/v0/" + where + "?via=signer",
+                        {method:"POST", headers:{"Content-Type":"application/json"}, body});
+  const res = await r.json();
+  show(r.ok ? "Filed. It is in the log." : "The door refused it.",
+       JSON.stringify(res, null, 1), !r.ok);
+};
+
+function show(m, detail, bad){
+  $("#out").hidden = false;
+  $("#msg").textContent = m;
+  $("#msg").style.color = bad ? "var(--red)" : "var(--lime)";
+  $("#detail").hidden = !detail; if (detail) $("#detail").textContent = detail;
+}
+refresh();
+</script>
+{% endblock %}

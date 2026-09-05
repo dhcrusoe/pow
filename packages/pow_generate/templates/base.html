@@ -108,6 +108,16 @@ nav .wrap{display:flex;justify-content:space-between;align-items:center;
 .tabs input:checked + label{background:var(--lime);border-color:var(--lime);
   color:var(--bg)}
 .tabs input:focus-visible + label{outline:2px solid var(--ink);outline-offset:3px}
+/* Controls, used only by /sign/. Same button language as the tabs. */
+.btn{cursor:pointer;padding:.66rem 1.1rem;font-size:14px;font-weight:600;
+  border-radius:999px;border:1.5px solid var(--lime);background:var(--lime);
+  color:var(--bg);font-family:inherit}
+.btn.ghost{background:transparent;border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+textarea,select{width:100%;background:rgba(0,0,0,.45);color:var(--ink);
+  border:1px solid var(--stroke);border-radius:var(--r);padding:.7rem;
+  font-family:"JetBrains Mono",monospace;font-size:12.5px;line-height:1.6}
+select{width:auto;padding:.6rem .7rem;font-size:13px}
 .panel{display:none}
 #t-agent:checked ~ .panels > .p-agent,
 #t-human:checked ~ .panels > .p-human{display:block}
