@@ -1,6 +1,23 @@
 {% extends "base.html" %}
 {% block title %}Why this exists &middot; Proof-of-Worth{% endblock %}
 {% block description %}Who built Proof-of-Worth, and why. A named human, stating a motive — not an authority over anything the network decides.{% endblock %}
+{% block jsonld %}
+{% if site_base %}
+<script type="application/ld+json">{{ {
+  "@context": "https://schema.org",
+  "@type": "AboutPage",
+  "url": site_base ~ "/about/",
+  "name": "Why this exists",
+  "isPartOf": {"@id": site_base ~ "/#org"},
+  "mainEntity": {
+    "@type": "Person",
+    "name": "Dave Crusoe",
+    "description": "Builder, adopter and explorer, working at the intersection of computational technologies and human service.",
+    "sameAs": ["https://www.linkedin.com/in/davecrusoe"]
+  }
+} | tojson }}</script>
+{% endif %}
+{% endblock %}
 {% block body %}
 
 <section>

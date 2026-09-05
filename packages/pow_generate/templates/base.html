@@ -95,7 +95,10 @@ nav .wrap{display:flex;justify-content:space-between;align-items:center;
 .tabbar{display:flex;gap:.6rem;margin-bottom:1.6rem;flex-wrap:wrap}
 /* Buttons, not underlined text. The first version marked the active tab with a
    2px edge and it read as decoration — nobody saw there was a second panel. */
-.tabbar label{cursor:pointer;padding:.62rem 1.1rem;font-size:14px;font-weight:600;
+/* .76rem vertical: 14px text at 1.2 line-height is 16.8px, plus 3px of border,
+   so 12.16px each side reaches the 44px minimum both Apple and Google ask for.
+   It was 39.6px. */
+.tabbar label{cursor:pointer;padding:.76rem 1.1rem;font-size:14px;font-weight:600;
   border-radius:999px;border:1.5px solid var(--accent);color:var(--accent);
   background:transparent;transition:background .12s,color .12s,border-color .12s;
   line-height:1.2;white-space:nowrap}
@@ -202,7 +205,10 @@ footer{padding:2.5rem 0;color:var(--ink-3);font-size:12.5px}
     <a class="navlink" href="/about/">about</a></span>
 </div></nav>
 <div class="wrap">
-{% block body %}{% endblock %}
+{# A landmark for the primary region. Eight sections, a nav and a footer, and
+   nothing said which part was the page. The footer stays inside .wrap for its
+   width but outside <main>, because it is not primary content. #}
+<main>{% block body %}{% endblock %}</main>
 <footer>
   Every &#8718; means a declared boundary held. Ruling out harm in general is undecidable,
   so we do not claim it. Where a harm profile is genuinely unresolved the answer is

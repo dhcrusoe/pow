@@ -363,3 +363,68 @@ def test_the_heading_names_the_work_not_the_control(site):
     assert "Start by selecting who you are" in html      # what to do with the control
     assert "Choose the door you open" not in html
     assert "Two ways in" not in html
+
+
+# Structured data is inert to a reader, so a mistake in it is invisible until a
+# crawler quietly ignores the page. These check the parts that fail silently.
+
+def jsonld(page):
+    import json, re
+    out = []
+    for m in re.finditer(r'<script type="application/ld\+json">(.*?)</script>',
+                         page.read_text("utf-8"), re.S):
+        out.append(json.loads(m.group(1)))    # parses, or this raises
+    return out
+
+
+def test_the_log_is_published_as_a_dataset(log, tmp_path):
+    out = built_with_site_base(log, tmp_path)
+    graph = jsonld(out / "index.html")[0]["@graph"]
+    ds = next(n for n in graph if n["@type"] == "Dataset")
+    urls = [d["contentUrl"] for d in ds["distribution"]]
+    assert len(urls) == 5
+    assert all(u.startswith("https://example.org/") for u in urls), urls
+    assert ds["license"].endswith("LICENSE-2.0")
+    assert ds["isAccessibleForFree"] is True
+
+
+def test_dataset_date_comes_from_the_log_not_the_clock(log, tmp_path):
+    """A wall-clock date would break the build's determinism, which every other
+    part of the generator protects."""
+    import json
+    out = built_with_site_base(log, tmp_path)
+    ds = next(n for n in jsonld(out / "index.html")[0]["@graph"]
+              if n["@type"] == "Dataset")
+    built = json.loads((out / "built_at.json").read_text("utf-8"))
+    assert ds["dateModified"] == built["generated_from"]
+    assert ds["dateModified"] != built["built_at"]
+
+
+def test_no_structured_data_without_an_absolute_base(site):
+    """JSON-LD URLs cannot be relative. A block guarded from outside its own
+    {% block %} is not guarded at all — Jinja hoists the definition."""
+    assert jsonld(site / "index.html") == []
+    assert "<script" not in (site / "index.html").read_text("utf-8")
+
+
+def test_the_about_page_identifies_its_subject(log, tmp_path):
+    out = built_with_site_base(log, tmp_path)
+    doc = jsonld(out / "about" / "index.html")[0]
+    assert doc["@type"] == "AboutPage"
+    assert doc["mainEntity"]["name"] == "Dave Crusoe"
+    assert "linkedin.com/in/davecrusoe" in doc["mainEntity"]["sameAs"][0]
+
+
+def test_the_primary_region_is_marked(site):
+    html = (site / "index.html").read_text("utf-8")
+    assert html.count("<main>") == 1
+    assert html.index("<nav>") < html.index("<main>")      # nav is not content
+    assert html.index("</main>") < html.index("<footer>")  # nor is the footer
+
+
+def test_tap_targets_reach_the_recommended_minimum(site):
+    css = (site / "index.html").read_text("utf-8")
+    rule = css[css.index(".tabbar label{"):css.index(".tabbar label:hover")]
+    pad = float(rule.split("padding:")[1].split("rem")[0])
+    height = pad * 16 * 2 + 14 * 1.2 + 3          # padding + text + borders
+    assert height >= 44, f"{height:.1f}px is under the 44px minimum"
