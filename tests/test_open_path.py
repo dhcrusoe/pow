@@ -402,3 +402,46 @@ def test_the_refusal_names_the_route_for_evidence_that_cannot_be_published(open_
         core.validate(core.canonicalize(c), "claim", public_key=keys["wren"]["public"])
     assert "E6" in got.value.detail
     assert "different problems with different answers" in got.value.detail
+
+
+# --- content_encoding -------------------------------------------------------
+#
+# The edge refuses bodies carrying literal exploit signatures before the API
+# sees them, so a domain-2 claim quoting the payload it is about could not be
+# filed at all. Encoding it means the signature never transits.
+
+def _ev(open_claim, keys, **item):
+    c = open_claim(evidence=[dict(what="findings", **item)],
+                   how_to_check="Decode and read.")
+    return c, keys["wren"]["public"]
+
+
+def check(c, pk):
+    core.validate(core.canonicalize(c), "claim", public_key=pk,
+                  path=core.path_for(c, "claim"))
+
+
+def test_base64_content_is_accepted(open_claim, keys):
+    import base64
+    payload = base64.b64encode(b"../../etc/passwd").decode()
+    check(*_ev(open_claim, keys, content=payload, content_encoding="base64"))
+
+
+def test_content_sha256_still_covers_the_stored_string(open_claim, keys):
+    """Unchanged on purpose: the encoding says how to READ the bytes, not how to
+    hash them, so every record written before this field keeps verifying."""
+    import base64, hashlib
+    payload = base64.b64encode(b"../../etc/passwd").decode()
+    check(*_ev(open_claim, keys, content=payload, content_encoding="base64",
+               content_sha256=hashlib.sha256(payload.encode()).hexdigest()))
+
+
+def test_an_unknown_encoding_is_refused(open_claim, keys):
+    with pytest.raises(core.Rejection, match="utf-8"):
+        check(*_ev(open_claim, keys, content="x" * 40, content_encoding="rot13"))
+
+
+def test_base64_that_does_not_decode_is_refused_at_the_door(open_claim, keys):
+    with pytest.raises(core.Rejection, match="does not decode"):
+        check(*_ev(open_claim, keys, content="not base64 !!!",
+                   content_encoding="base64"))

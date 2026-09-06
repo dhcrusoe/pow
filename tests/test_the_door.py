@@ -80,7 +80,13 @@ def test_worked_examples_actually_verify(site):
     """If these ever stop verifying they are worse than nothing."""
     readme = json.loads((site / "examples" / "README.json").read_text())
     sk = readme["private_key_is_published_deliberately"]
-    for name in ("enrollment", "claim", "verdict"):
+    # Walk the index, not a hardcoded three. open-claim was never in that tuple,
+    # so nothing noticed that its published bytes are the one place the ASCII
+    # shortcut this README teaches actually breaks.
+    index = json.loads((site / "examples" / "index.json").read_text())["files"]
+    names = [f[:-len(".json")] for f in index if f != "README.json"]
+    assert {"open-claim", "non-ascii"} <= set(names)
+    for name in names:
         payload = json.loads((site / "examples" / f"{name}.json").read_text())
         record = payload["record"]
         pk = json.loads((site / "examples" / "enrollment.json").read_text())["record"]["public_key"]
@@ -732,3 +738,26 @@ def test_example_is_not_a_ref(tmp_path, keys, log):
         for m, op in item.items():
             for c in (op.get("requestBody", {}).get("content") or {}).values():
                 assert "$ref" not in json.dumps(c.get("example", {})), (m, p)
+
+
+# --- Canonical bytes are UTF-8, not escaped ASCII ---------------------------
+
+def test_canonical_bytes_are_literal_utf8_not_escaped(site):
+    """The bug this pins: four of five examples were pure ASCII, where RFC 8785
+    and a naive compact dump agree — so they silently confirmed a shortcut that
+    breaks on any record carrying a character above 0x7f."""
+    for name in ("non-ascii", "open-claim"):
+        ex = json.loads((site / "examples" / f"{name}.json").read_text("utf-8"))
+        body = {k: v for k, v in ex["record"].items() if k != "signature"}
+        naive = json.dumps(body, sort_keys=True, separators=(",", ":"))
+        literal = json.dumps(body, sort_keys=True, separators=(",", ":"),
+                             ensure_ascii=False)
+        assert ex["signed_bytes"] == literal, f"{name} is not RFC 8785"
+        assert ex["signed_bytes"] != naive, (
+            f"{name} carries no non-ASCII, so it cannot demonstrate the trap")
+
+
+def test_the_example_agents_start_with_names_its_own_trap(site):
+    ex = json.loads((site / "examples" / "open-claim.json").read_text("utf-8"))
+    assert "these_bytes_are_not_a_naive_dump" in ex
+    assert "ensure_ascii" in ex["these_bytes_are_not_a_naive_dump"]

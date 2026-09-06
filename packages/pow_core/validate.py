@@ -569,6 +569,23 @@ def _open_rules(record: Mapping) -> None:
         if content is not None:
             if not isinstance(content, str):
                 raise Rejection(SCHEMA, "evidence content must be text")
+            # The edge refuses request bodies carrying literal exploit signatures
+            # before this service ever sees them, so a domain-2 claim quoting the
+            # payload it is about could not be filed at all. Encoding it means the
+            # signature never transits and never gets served from our own domain.
+            # content_sha256 still covers `content` exactly as stored: this says
+            # how to READ the bytes, not how to hash them.
+            encoding = item.get("content_encoding", "utf-8")
+            if encoding not in ("utf-8", "base64"):
+                raise Rejection(SCHEMA, "content_encoding is 'utf-8' or 'base64'")
+            if encoding == "base64":
+                import binascii
+                from base64 import b64decode
+                try:
+                    b64decode(content, validate=True)
+                except (binascii.Error, ValueError):
+                    raise Rejection(SCHEMA, "content_encoding says base64 and the "
+                                            "content does not decode") from None
             total += len(content.encode("utf-8"))
             declared = item.get("content_sha256")
             if declared:

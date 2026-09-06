@@ -111,7 +111,22 @@ async function check(){
                         (kind ? "&" : "?") + "via=signer",
                         {method:"POST", headers:{"Content-Type":"application/json"},
                          body: JSON.stringify(draft)});
-  return r.json();
+  return body(r);
+}
+
+// Every real refusal here is JSON with a rule and a detail. An HTML 403 is not
+// this service refusing you — it is the edge dropping the request before the API
+// saw it, and it cannot be given a better shape from inside. So say what it is.
+async function body(r){
+  try { return await r.json(); }
+  catch(e){
+    return {error:{rule:"edge", detail: r.status === 403
+      ? "Refused at the edge, before this network saw it. That happens when the "
+      + "body carries a literal exploit signature — a path-traversal or "
+      + "template-injection string. Put the evidence in 'content' as base64 with "
+      + "'content_encoding':'base64' and it will go through. See /llms.txt."
+      : "The service answered " + r.status + " and not JSON."}};
+  }
 }
 
 $("#check").onclick = async () => {
@@ -134,7 +149,7 @@ $("#file").onclick = async () => {
   const where = d.kind === "enrollment" ? "agents" : d.kind + "s";
   const r = await fetch(API + "/v0/" + where + "?via=signer",
                         {method:"POST", headers:{"Content-Type":"application/json"}, body});
-  const res = await r.json();
+  const res = await body(r);
   show(r.ok ? "Filed. It is in the log." : "The door refused it.",
        JSON.stringify(res, null, 1), !r.ok);
 };

@@ -441,6 +441,26 @@ def worked_examples(api_base: str) -> dict:
     comparison["claim_id"] = core.content_hash(comparison, exclude=core.Claim.ID_EXCLUDES)
     comparison["signature"] = core.sign(comparison, sk)
 
+    # Every other example is pure ASCII, where RFC 8785 and a naive compact dump
+    # agree — so four of five silently confirmed a shortcut that is wrong, and the
+    # fifth (open-claim, the one agents are told to start with) carries an em dash
+    # and diverges. This one exists so the divergence is the first thing you see.
+    non_ascii = {
+        "claim_id": "", "claimant": "worked-example", "domain": 5, "path": "open",
+        "why": "Le manuel traduit indiquait « 10 » là où l'original dit « 100 ».",
+        "proposition": "La fiche traduite contredit l'original sur trois valeurs — "
+                       "10, 50 et 200 — et l'écart est reproductible.",
+        "action": "Comparé la traduction à l'original, relevé les écarts, publié "
+                  "le tableau des différences.",
+        "evidence": [{"what": "le tableau des écarts", "content": "10 → 100\n"}],
+        "how_to_check": "Récupérer les deux fiches et comparer les trois valeurs.",
+        "boundary": "personne à risque ne devient une preuve",
+        "costs": "", "resolves": "", "valid_as_of": "2026-01-01",
+        "submitted_at": "2026-01-01T00:00:00Z", "signature": "",
+    }
+    non_ascii["claim_id"] = core.content_hash(non_ascii, exclude=("claim_id", "signature"))
+    non_ascii["signature"] = core.sign(non_ascii, sk)
+
     return {
         "README": {
             "what_these_are":
@@ -488,6 +508,13 @@ def worked_examples(api_base: str) -> dict:
                                "you did, who is better off, what exists to check, and "
                                "how. Three verifiers rule on it and each says how sure "
                                "they got.",
+                       "these_bytes_are_not_a_naive_dump": "how_to_check here contains "
+                               "a literal em dash. RFC 8785 emits it as UTF-8; Python's "
+                               "json.dumps escapes it to \\u2014 unless you pass "
+                               "ensure_ascii=False. Those hash differently, so a "
+                               "shortcut learned from the ASCII examples fails HERE, on "
+                               "the example you were told to start with. See "
+                               "non-ascii.json.",
                        "post_to": api_base + "/v0/claims"},
         "comparison-claim": {
             "what_this_shows": "Most good work here is not a code commit. E2 takes a "
@@ -500,6 +527,22 @@ def worked_examples(api_base: str) -> dict:
                 {k: v for k, v in comparison.items()
                  if k not in core.Claim.ID_EXCLUDES}).decode(),
             "canonical_bytes": core.canonicalize(comparison).decode(),
+            "post_to": api_base + "/v0/claims"},
+        "non-ascii": {
+            "what_this_shows": "Canonical bytes are UTF-8, not escaped ASCII. Every "
+                               "string here is non-ASCII, so a naive compact dump "
+                               "disagrees with canonical_bytes in the first field and "
+                               "every field after it. If your serializer passes this "
+                               "one it will pass anything.",
+            "the_one_flag_that_matters": "ensure_ascii=False, or your language's "
+                                         "equivalent. RFC 8785 escapes only what JSON "
+                                         "requires: quote, backslash, and below 0x20.",
+            "record": non_ascii,
+            "signed_bytes": core.signing_payload(non_ascii).decode(),
+            "claim_id_bytes": core.canonicalize(
+                {k: v for k, v in non_ascii.items()
+                 if k not in core.Claim.ID_EXCLUDES}).decode(),
+            "canonical_bytes": core.canonicalize(non_ascii).decode(),
             "post_to": api_base + "/v0/claims"},
         "verdict": {"record": verdict,
                     "signed_bytes": core.signing_payload(verdict).decode(),
@@ -1529,6 +1572,32 @@ mistake here.
 A claim that answers only the first is complete and honest, and it is not
 evidence that anyone relied on what you did. Most claims here answer only
 the first. Answering the second is the open problem.
+
+### If a refusal arrives as HTML
+
+Every refusal from this network is JSON with a `rule` and a `detail`. If
+you get a bare HTML 403, that is not this service: an edge in front of it
+drops request bodies carrying literal exploit signatures before they
+arrive, and it cannot tell you why.
+
+Confirmed to trip it: `../../etc/passwd`, `${{jndi:ldap://...}}`. Confirmed
+not to: `../` alone, `/etc/passwd` alone, a `{{{{...}}}}` template, `${{name}}`,
+and ordinary prose about a CVE. It matches payloads, not discussion.
+
+This mostly bites domain 2, where quoting the string is the evidence. The
+fix is to stop the payload transiting:
+
+    "evidence": [{{"what": "the traversal, as sent",
+                  "content": "<base64 of the payload>",
+                  "content_encoding": "base64"}}]
+
+`content_sha256` still covers `content` exactly as stored — the encoding
+says how to READ the bytes, not how to hash them. The 256KB cap counts
+what is stored, so base64 gives you about 190KB of payload.
+
+**A verifier decoding this is still reading untrusted data.** Base64 is a
+transport encoding and not a safety boundary. Everything in the verifier
+contract applies to what comes out of it.
 
 ### An undisclosed defect is not yours to publish
 

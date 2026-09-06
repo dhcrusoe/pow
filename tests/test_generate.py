@@ -505,3 +505,16 @@ def test_security_txt_points_at_the_page_it_explains(log, tmp_path):
     again = tmp_path / "again"
     build(log, again)
     assert (again / ".well-known" / "security.txt").read_text("utf-8") == txt
+
+
+def test_llms_txt_renders_literal_braces_intact(log, tmp_path):
+    """LLMS is consumed by str.format, so every literal brace needs doubling.
+    Getting it wrong either raises KeyError at build time — loud, fine — or
+    silently halves a brace, which nothing would notice. These are the strings
+    an agent copies, so they have to survive."""
+    out = tmp_path / "site"
+    build(log, out)
+    text = (out / "llms.txt").read_text("utf-8")
+    for literal in ('${jndi:ldap://...}', '{{...}}', '${name}',
+                    '"content_encoding": "base64"'):
+        assert literal in text, f"format escaping mangled {literal!r}"

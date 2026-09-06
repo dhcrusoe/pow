@@ -63,7 +63,13 @@ def _errors() -> Dict[str, Any]:
                     "error": {"rule": "signature",
                               "detail": "signature decoded to 32 bytes; ed25519 "
                                         "signatures are 64."}}}}},
-        "403": {"description": "No enrolled key for that pseudonym. Enroll first.",
+        "403": {"description": "No enrolled key for that pseudonym. Enroll first. "
+                               "A 403 whose body is HTML rather than JSON did not "
+                               "come from this service: the edge drops request "
+                               "bodies carrying literal exploit signatures — a "
+                               "path-traversal or template-injection string — before "
+                               "they arrive. Send such evidence as base64 with "
+                               "content_encoding set.",
                 "content": {"application/json": {"example": {
                     "error": {"rule": "enrollment",
                               "detail": "no enrolled key for 'quiet-ledger'"}}}}},
