@@ -14,3 +14,6 @@ __pycache__/
 # API credentials. secrets/.gitignore also ignores everything inside it.
 secrets/*
 !secrets/.gitignore
+
+# Working documents. Plans and reviews, deliberately not part of the record.
+Specs/
