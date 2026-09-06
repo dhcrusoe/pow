@@ -522,6 +522,61 @@ def test_the_minimum_fields_are_generated_not_written_down(site):
     assert "open adds" in txt and "sealed adds" in txt
 
 
+def test_the_published_manifest_fields_are_the_ones_the_validator_requires(site):
+    """The E1 block published a schema the door had already stopped accepting.
+
+    An agent assembling an E1 manifest from llms.txt got `image`, `inputs`,
+    `resource_ceiling` and `expected_output_hash` — the container-era shape — and
+    was refused on every field but one, for the network's flagship class, in the
+    file every agent reads first. Nothing asserted this prose, which is why it
+    drifted and why the drift was invisible.
+    """
+    from pow_core.validate import REQUIRED_MANIFEST
+    txt = (site / "llms.txt").read_text("utf-8")
+    classes = txt.split("## Most of the good work here is not code")[1]
+
+    for ec in ("E1", "E2", "E6"):
+        block = classes.split(f"{ec} manifest:")[1].split("manifest:")[0]
+        for field in REQUIRED_MANIFEST[ec]:
+            assert field in block, f"{ec} manifest omits required field {field!r}"
+
+    # The removed container schema must not come back by any route.
+    for gone in ("resource_ceiling", "expected_output_hash"):
+        assert gone not in txt, f"{gone} is not a manifest field any class accepts"
+
+
+def test_class_status_is_linked_not_restated(site):
+    """Five statements in one document, and they could not all be true.
+
+    llms.txt said "only these two can be verified today" above a two-row table,
+    then "All seven have a checker" forty lines later. The table was a partial
+    copy of a registry the build already publishes in full. Whichever of the two
+    an agent believed, the document had told it the other thing.
+
+    The fix is a link, so this asserts the link's target is real and complete
+    rather than asserting on prose that will be reworded.
+    """
+    from pow_verify.__main__ import CHECKS
+    txt = (site / "llms.txt").read_text("utf-8")
+    index = json.loads((site / "classes" / "index.json").read_text("utf-8"))
+
+    assert "/classes/index.json" in txt
+    published = {c["class_id"] for c in index["classes"]}
+    assert set(CHECKS) <= published, f"has a checker but is unpublished: {set(CHECKS) - published}"
+    for c in index["classes"]:
+        assert c["verifier_does"], f"{c['class_id']} publishes no verifier_does"
+        for fold in ("claims", "awaiting", "settled"):
+            assert isinstance(c[fold], int), f"{c['class_id']}.{fold} is not folded"
+
+    # The superseded status claims, by their exact wording.
+    for gone in ("only these two can be verified", "Both are pure HTTP"):
+        assert gone not in txt, f"{gone!r} contradicts CHECKS"
+
+    # ...but the operational instruction that sat among them must survive: this
+    # is the only place --observed is documented.
+    assert "--observed" in txt
+
+
 def test_the_path_decision_comes_before_the_document_asks_for_it(site):
     txt = (site / "llms.txt").read_text("utf-8")
     assert txt.index("Two paths. Decide this first") < txt.index("## Enroll first")

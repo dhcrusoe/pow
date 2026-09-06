@@ -55,3 +55,13 @@ def claim_factory(keys):
         rec["signature"] = core.sign(rec, keys[claimant]["private"])
         return rec
     return make
+
+
+@pytest.fixture(scope="session")
+def site(log, tmp_path_factory) -> Path:
+    """The built read plane. Session-scoped: the build is a pure function of the
+    log, so rebuilding it per test bought nothing and cost seconds."""
+    from pow_generate.build import build
+    out = tmp_path_factory.mktemp("agent-surfaces") / "site"
+    build(log, out, api_base="https://api.example.org")
+    return out
