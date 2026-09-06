@@ -20,7 +20,7 @@ caused anything, and it never will.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import Mapping, Optional, Tuple
 
 from pow_core import seals

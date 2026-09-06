@@ -14,8 +14,6 @@ from __future__ import annotations
 import hashlib
 from typing import Iterable, List, Mapping, Optional
 
-LEASE_SECONDS = 72 * 3600
-
 
 def eligible(
     claims: Iterable[Mapping],

@@ -16,9 +16,7 @@ implementations reading the same log produce the same registry.
 from __future__ import annotations
 
 import re
-from typing import Dict, Iterable, List, Mapping, Optional
-
-from .records import GENESIS_CLASSES
+from typing import Dict, Iterable, List, Mapping
 
 SLUG = re.compile(r"^[a-z][a-z0-9-]{2,39}$")
 

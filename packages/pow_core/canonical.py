@@ -14,7 +14,6 @@ removes an entire class of cross-implementation disagreement at zero cost.
 from __future__ import annotations
 
 import json
-import re
 from typing import Any
 
 _ESCAPES = {
@@ -105,9 +104,6 @@ def loads(data: bytes) -> Any:
 
 def _reject_float(raw: str):
     raise CanonicalizationError(f"floats are not permitted in records: {raw}")
-
-
-_DUPLICATE_KEY = re.compile(rb'"([^"\\]*)"\s*:')
 
 
 def has_duplicate_keys(data: bytes) -> bool:

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import re
 from difflib import get_close_matches
-from typing import Mapping, Optional, Tuple
+from typing import Mapping, Optional
 
 from pydantic import ValidationError
 

@@ -6,7 +6,6 @@ architecture exists to prevent, so it is asserted rather than assumed.
 """
 from __future__ import annotations
 
-import json
 
 import pytest
 

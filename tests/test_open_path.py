@@ -342,7 +342,6 @@ def test_the_generator_survives_a_claim_with_no_evidence_class(site):
 
 
 def test_an_open_claim_renders_what_it_actually_carries(site):
-    import pathlib
     pages = [p for p in (site / "claims").rglob("index.html")]
     assert pages
     rendered = "\n".join(p.read_text("utf-8") for p in pages)

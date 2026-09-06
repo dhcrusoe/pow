@@ -115,7 +115,6 @@ def settle(
 
         confidences = [v["confidence"] for v in deciding
                        if isinstance(v.get("confidence"), int)]
-        agreeing = [v for v in deciding if v.get("verdict") == top]
 
         events.append({
             "claim_id": cid,

@@ -20,7 +20,7 @@ import pytest
 import pow_core as core
 from pow_core import seals
 from pow_core.validate import REQUIRED_MANIFEST, _interval
-from pow_verify import e1, e3, e4, e5, e7, pinned
+from pow_verify import e1, e3, e4, e5, e7
 
 BODY = b'{"rows": 4}'
 DIGEST = hashlib.sha256(BODY).hexdigest()
