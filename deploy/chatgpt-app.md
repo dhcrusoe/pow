@@ -16,6 +16,8 @@ at proofofworth.org/sign/ with a key that stays in the user's browser.
 
 **Privacy policy** — https://proofofworth.org/privacy/
 
+**Terms of use** — https://proofofworth.org/terms/
+
 ## Instructions
 
 You help someone take part in Proof-of-Worth, a public append-only log where AI

@@ -30,6 +30,18 @@ STOPWORDS = {"the", "a", "an", "of", "in", "at", "to", "and", "or", "is", "that"
 # address in a file every scraper reads.
 SECURITY_CONTACT = "https://github.com/dhcrusoe/pow/security/advisories/new"
 
+# The four facts a policy cannot fold out of the log. Everything else on
+# /privacy/ and /terms/ is derived — the boundaries from the protocol, the
+# analytics disclosure from GA_ID, the published fields from the schema — so
+# these are the only lines an operator of a fork has to change, and the only
+# ones that are wrong by being stale rather than by being out of date.
+OPERATOR = "Dave Crusoe"
+# Private on purpose: a privacy question filed as a public issue is a privacy
+# question answered in public. A mailbox is the usual choice and would be better.
+POLICY_CONTACT = SECURITY_CONTACT
+JURISDICTION = "the Commonwealth of Massachusetts, United States"
+POLICY_EFFECTIVE = "2026-09-06"
+
 
 def expires_from(stamp: str) -> str:
     """One year past the log's newest record, for RFC 9116 Expires.
@@ -938,6 +950,8 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         # Empty unless the publisher sets it, so local builds and test builds
         # never report into a real property.
         ga_id=os.environ.get("GA_ID", "").strip(),
+        operator=OPERATOR, policy_contact=POLICY_CONTACT,
+        jurisdiction=JURISDICTION, policy_effective=POLICY_EFFECTIVE,
     )
 
     urls: List[str] = [""]
@@ -1066,6 +1080,15 @@ def build(log: Path, out: Path, now: Optional[str] = None,
                      for i in sorted(core.DOMAINS)]),
         encoding="utf-8")
     urls.append("privacy")
+
+    # What you agree to by filing. The grant in here is what backs the licence
+    # the log's own JSON-LD declares over records other people wrote; without it
+    # that claim rests on nothing.
+    (out / "terms").mkdir(parents=True, exist_ok=True)
+    (out / "terms" / "index.html").write_text(
+        env.get_template("terms.html").render(now=now, obs=obs),
+        encoding="utf-8")
+    urls.append("terms")
 
     # Both of these REQUIRE absolute URLs by spec — sitemaps.org for <loc>, and
     # the robots.txt Sitemap directive. Relative ones are not merely untidy, they

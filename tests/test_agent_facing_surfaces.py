@@ -146,3 +146,120 @@ def test_the_chatgpt_privacy_field_points_at_a_page_that_exists(site):
     for must in ("append-only", "cannot be edited", "permanent"):
         assert must in page, (
             f"/{path}/ is named as the privacy policy but never says {must!r}")
+
+
+# --- Privacy and terms ------------------------------------------------------
+#
+# The privacy page used to be an essay about permanence: honest, well written,
+# and missing most of what a privacy policy is required to disclose. It named no
+# controller, no recipients and no complaint route, while data flowed through
+# four companies. These assert the standard disclosures are present, and that the
+# two things which can silently go false — the cookie statement and the licence
+# grant — cannot drift from what the build actually does.
+
+ART13 = {
+    "a controller": "responsible",
+    "a contact route": "contact",
+    "a legal basis": "Legitimate interest",
+    "named recipients": "Cloudflare",
+    "the log host": "GitHub",
+    "third-country transfer": "United States",
+    "retention": "Kept",
+    "the complaint right": "supervisory authority",
+    "automated decisions": "automated",
+    "an effective date": "in effect",
+}
+
+
+@pytest.mark.parametrize("what,needle", sorted(ART13.items()))
+def test_the_privacy_policy_makes_the_standard_disclosures(site, what, needle):
+    page = (site / "privacy" / "index.html").read_text("utf-8")
+    assert needle in page, f"the privacy policy discloses no {what}"
+
+
+def test_the_privacy_policy_discloses_the_one_third_party_who_never_came_here(site):
+    """E6 stores a counterparty's reply whole, headers and all, and publishes it.
+
+    It is the only place this network holds an identified person's data on behalf
+    of somebody who never visited it and agreed to nothing.
+    """
+    page = (site / "privacy" / "index.html").read_text("utf-8")
+    assert "E6" in page and "headers" in page, (
+        "E6 publishes a third party's raw email; the privacy policy must say so")
+
+
+@pytest.mark.parametrize("ga", ["", "G-TESTONLY"])
+def test_the_cookie_statement_cannot_contradict_the_build(log, tmp_path, ga, monkeypatch):
+    """The page claimed "no cookies set by this service" while Analytics was live
+    in production, setting _ga. Derived from GA_ID now, so it cannot say the
+    wrong one: a wording fix would have gone stale the next time the tag moved.
+    """
+    from pow_generate.build import build
+
+    monkeypatch.setenv("GA_ID", ga)
+    out = tmp_path / ("ga" if ga else "noga")
+    build(log, out)
+    page = (out / "privacy" / "index.html").read_text("utf-8")
+    if ga:
+        assert ga in page and "_ga" in page, "analytics running, page does not disclose it"
+        assert "<b>Google</b>" in page, "Google receives data and is not listed as a recipient"
+        assert "sets no cookies" not in page, "page denies cookies it is setting"
+    else:
+        assert "sets no cookies" in page, "no analytics, page should say so plainly"
+        assert "<b>Google</b>" not in page, "Google listed as a recipient when it receives nothing"
+
+
+def test_the_terms_exist_and_are_reachable(site):
+    """Linked from the nav on every page, and from privacy, or nobody finds it."""
+    assert (site / "terms" / "index.html").is_file()
+    for page in ("index.html", "privacy/index.html", "security/index.html"):
+        assert 'href="/terms/"' in (site / page).read_text("utf-8"), (
+            f"/terms/ is unreachable from /{page}")
+
+
+def test_the_licence_the_log_declares_is_actually_granted(log, tmp_path, monkeypatch):
+    """The homepage declares a licence over the log. Every record in it was
+    written by somebody else, so without a grant in the terms that declaration
+    rests on nothing. These two must name the same licence.
+
+    Built with SITE_BASE because the JSON-LD is gated on it: a relative
+    contentUrl is invalid, so the whole block is omitted rather than emitted
+    broken, and the declaration only exists in a production-shaped build.
+    """
+    from pow_generate.build import build
+
+    monkeypatch.setenv("SITE_BASE", "https://example.org")
+    out = tmp_path / "licensed"
+    build(log, out)
+    home = json.loads(
+        (out / "index.html").read_text("utf-8")
+        .split('<script type="application/ld+json">')[1].split("</script>")[0])
+    declared = [n.get("license") for n in home.get("@graph", []) if n.get("license")]
+    assert declared, "the homepage declares no licence over the log"
+
+    terms = (out / "terms" / "index.html").read_text("utf-8")
+    for licence in declared:
+        assert licence in terms, (
+            f"the log is published under {licence} but the terms grant no such licence")
+    for must in ("irrevocable", "perpetual", "right to grant"):
+        assert must in terms, f"the contributor grant never says {must!r}"
+
+
+def test_the_terms_bound_what_may_be_filed(site):
+    """Acceptable use is the only thing that reaches a contributor before they
+    write to something that cannot be undone."""
+    terms = (site / "terms" / "index.html").read_text("utf-8")
+    for must in ("Personal data", "rights to publish", "unlawful", "as is"):
+        assert must in terms, f"the terms never address {must!r}"
+
+
+def test_the_chatgpt_terms_field_points_at_a_page_that_exists(site):
+    import re
+    from urllib.parse import urlparse
+
+    text = (DEPLOY / "chatgpt-app.md").read_text("utf-8")
+    field = re.search(r"\*\*Terms of use\*\*\s*—\s*(\S+)", text)
+    assert field, "chatgpt-app.md declares no terms field"
+    path = urlparse(field.group(1)).path.strip("/")
+    assert (site / path / "index.html").is_file(), (
+        f"terms field points at /{path}/, which the build does not produce")
