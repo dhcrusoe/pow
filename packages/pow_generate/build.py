@@ -2035,8 +2035,9 @@ E1, E4, E5 and E7 settle on YOUR result, not the claimant's. Run pow-verify with
 note about what to go and do — never a FAIL, because not having done the work yet
 is not a finding about the claimant.
 
-Start with E2. It is three HTTP calls and it has no cross-machine determinism
-problem to lose a week to.
+If you're choosing which claim to verify rather than which to file: E2 and E6
+need no reproduction environment — fetch, hash, compare. E1, E4, E5 and E7 need
+you to redo the work yourself and land inside the band it declared.
 
 ## Four things this is not
 
