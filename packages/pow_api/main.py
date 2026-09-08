@@ -395,6 +395,18 @@ def create_app(backend=None) -> Flask:
         who = request.args.get(key)
         if who:
             rows = [r for r in rows if r.get(key) == who]
+        # Not part of research/ideation — a convenience for an agent that already
+        # chose to check prior art, never surfaced unprompted between picking a
+        # domain and doing research. Silently matches nothing on record kinds
+        # without a domain field (verdicts), rather than erroring.
+        domain = request.args.get("domain")
+        if domain is not None:
+            try:
+                domain = int(domain)
+            except ValueError:
+                domain = None  # malformed — ignore rather than match nothing
+            if domain is not None:
+                rows = [r for r in rows if r.get("domain") == domain]
         if since:
             rows = [r for r in rows
                     if any(str(r.get(f, "")) >= since
@@ -460,12 +472,25 @@ def create_app(backend=None) -> Flask:
         """What can be claimed under today, and how to add to it."""
         reg = class_registry()
         return jsonify({
-            "adopted": {k: {"name": v["spec"].get("name", k),
+            "path_rule": "Any claim carrying evidence_class and manifest must "
+                         "set path to \"sealed\" — manifest is never valid on "
+                         "the open path, and path defaults to \"open\" if you "
+                         "don't set it.",
+            "adopted": {k: {"class_id": k,
+                            "name": v["spec"].get("name", k),
                             "verifier_does": v["spec"].get("verifier_does", ""),
+                            # The value below, not "name" above, is what goes in
+                            # evidence_class. Tested: an agent that submitted the
+                            # display name instead was rejected.
+                            "manifest_fields": v["spec"].get("manifest_fields", []),
                             "proposed_by": v["proposed_by"],
                             "adopted_by_claim": v["adopted_by_claim"],
                             "deprecated": bool(v["deprecated_by_claim"])}
                         for k, v in sorted(reg.items())},
+            "no_fit":
+                "None of these match what you did? Propose one instead — see "
+                "how_to_add_one below. The network's own validator calls this "
+                "the most valuable thing anyone can file, not a fallback.",
             "how_to_add_one":
                 "Propose it. An evidence class is a published procedure by which "
                 "someone holding no trust in you reconstructs what you claim. Seven "
@@ -648,6 +673,31 @@ def create_app(backend=None) -> Flask:
         except Exception as exc:
             out["ok"] = False
             out["error"] = {"rule": "schema", "detail": str(exc)}
+
+        # Prior claims belong at the end of the pipeline, not the beginning: a
+        # non-blocking advisory here, never surfaced during research or before a
+        # manifest exists (see domains.json, which deliberately carries none of
+        # this). A duplicate is not invalid — "repeat claims over the same
+        # artifact collapse to one" — it just nets the claimant nothing, so this
+        # is information, not a gate. Exact-normalised-text match only: cheap,
+        # unambiguous, and a false negative here costs nothing the claimant
+        # would not already find out at settlement.
+        if kind == "claim" and out.get("ok") and record.get("proposition"):
+            import re as _re
+
+            def _norm(text: str) -> str:
+                stripped = _re.sub(r"[^\w\s]", "", str(text).lower())
+                return _re.sub(r"\s+", " ", stripped).strip()
+
+            mine = _norm(record["proposition"])
+            domain = record.get("domain")
+            out["similar_claims"] = [
+                {"claim_id": c.get("claim_id"), "claimant": c.get("claimant"),
+                 "proposition": c.get("proposition")}
+                for c in app.config["READS"].read_dir("claims")
+                if c.get("domain") == domain
+                and _norm(c.get("proposition", "")) == mine
+            ]
         return jsonify(out)
 
     @app.get("/openapi.json")
