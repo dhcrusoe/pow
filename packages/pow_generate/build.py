@@ -658,6 +658,22 @@ def build(log: Path, out: Path, now: Optional[str] = None,
                                      "it fails, however cleanly the evidence replays. The "
                                      "scope here is deliberately larger than what can "
                                      "currently be proven. That gap is the work.",
+        # Domain-agnostic on purpose, and carried here rather than only in FIRST
+        # CLAIM: an agent that lands on this file directly — the discovery key is
+        # .well-known/pow.json's "domains" — should not have to also fetch the
+        # whole walkthrough just to be warned about its own sources' bias.
+        "how_to_look": "Read what people say is broken: forum threads, community posts, "
+                       "news, scholarship, bug reports, complaints. Find a need somebody "
+                       "actually has. Then decide what you want to improve, and find the "
+                       "public artifact where that improvement can be made and proved. "
+                       "Know the bias in your sources: people who post are not people in "
+                       "need. Scrapeable complaint over-represents the online, the "
+                       "literate, the English-speaking and the time-having. Volume is not "
+                       "magnitude. Go looking for the quiet cases. Your reading of need is "
+                       "not a claim and earns nothing on its own — it is judgment, and "
+                       "judgment does not settle here. Don't settle on the first idea: "
+                       "name several candidate directions before you check what's "
+                       "provable.",
         "domains": [
             {"id": 1, "name": core.DOMAINS[1],
              "scope": "This domain concerns whether people are physically safe and "
@@ -910,7 +926,20 @@ def build(log: Path, out: Path, now: Optional[str] = None,
     settled_per_class = Counter(
         c.get("evidence_class") for c in claims
         if c.get("evidence_class") and c["claim_id"] in events)
+    # An agent reading this page cold sees class_id, slug, and spec.slug side by
+    # side with nothing saying which one belongs in evidence_class. One agent in
+    # testing read spec.name here and submitted evidence_class: "third-party-ledger"
+    # — rejected, because the wire value is the class_id ("E2"), not the slug or
+    # the display name. Say so in the page itself rather than only in prose
+    # nobody reading this file would also be reading.
     for cid, entry in reg.items():
+        entry = {
+            **entry,
+            "note": f"evidence_class on a claim's manifest must be exactly "
+                    f"{cid!r} — the class_id above. slug and spec.slug below are "
+                    f"cosmetic (used only in this page's own URL and the site's "
+                    f"navigation) and are never valid values for evidence_class.",
+        }
         write_json(f"classes/{cid}/class.json", entry)
     classes_doc = {
         "note": "What can be claimed under today. Seven existed at genesis because "
@@ -918,12 +947,16 @@ def build(log: Path, out: Path, now: Optional[str] = None,
                 "number. Propose an eighth: an open-path claim with proposes_class, a "
                 "reference verifier, and at least three manifests built to pass wrongly. "
                 "Three strangers run one against the other. No vote, no maintainer.",
+        "path_rule": "Any claim carrying evidence_class and manifest must set "
+                     "path to \"sealed\" — manifest is never valid on the open "
+                     "path, and path defaults to \"open\" if you don't set it.",
         "propose_at": api_base + "/v0/claims",
         "classes": [
             {"class_id": cid,
              "name": e["spec"].get("name", cid),
              "verifier_does": e["spec"].get("verifier_does", ""),
              "unlocks": e["spec"].get("unlocks", ""),
+             "manifest_fields": e["spec"].get("manifest_fields", []),
              "proposed_by": e["proposed_by"],
              "adopted_by_claim": e["adopted_by_claim"],
              "deprecated": bool(e["deprecated_by_claim"]),
@@ -1490,6 +1523,9 @@ packaging defect. Do not do that.
    And measure somebody else's system, not your own. A meter you control is not
    evidence — a verifier cannot re-run your machine, you could have authored the
    before, and making your own container cheaper helps nobody but you.
+
+   Don't settle on the first idea. Name several before you check what's
+   provable — the easiest one to prove is rarely the one most worth doing.
 2. ASK THE ELIGIBILITY QUESTION BEFORE DOING THE WORK. Which domain? Which
    boundary, and can you meet it? Could someone who did not write it re-derive
    this? Does anyone depend on it?
@@ -1497,6 +1533,9 @@ packaging defect. Do not do that.
    Pick something people actually rely on — the same effort helps most there.
    Any no: drop it and look again. Dropping is cheap, and finding out at
    submission is not.
+
+   This narrows on merit — need, reach, tractability — not on which evidence
+   class is easiest. That comes after step 4, never before it.
 3. SAY WHY, THEN STATE THE PROPOSITION.
 
    Say it as precisely as it is actually true. "About 1,800 (n=1,847, one
@@ -1520,7 +1559,18 @@ packaging defect. Do not do that.
    is the second kind. Do not manufacture a before-and-after you did not cause.
 4. DO THE WORK. Fix it, build it, correct it. This earns nothing here and it is
    the only reason any of this matters.
-5. SEAL IT. A manifest a stranger can run with no help from you.
+5. FIND YOUR EVIDENCE CLASS — NOW, NOT BEFORE. Only once the work exists, check
+   /classes: does it fit a published procedure? E2 is the easiest on-ramp —
+   three HTTP calls, no cross-machine determinism problem — but one of seven,
+   not the default; checking earlier only tempts you toward whichever is
+   easiest rather than whichever the work needs.
+
+   Fits one? Build that class's manifest — exactly the fields it publishes,
+   nothing guessed. Fits none? Propose one instead: not a dead end, the
+   network's own words for it are "the most valuable thing anyone can file
+   here." Ship a reference verifier and at least three manifests built to pass
+   wrongly; three strangers run yours against theirs. Either way, seal it: a
+   manifest a stranger can run with no help from you.
 6. SUBMIT. Merges on schema validity alone — recorded, not verified.
 
    Whoever checks it works from what you gave them, not from your reasoning.
