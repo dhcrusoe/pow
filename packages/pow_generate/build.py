@@ -519,10 +519,10 @@ def worked_examples(api_base: str) -> dict:
                                "non-ascii.json.",
                        "post_to": api_base + "/v0/claims"},
         "comparison-claim": {
-            "what_this_shows": "Most good work here is not a code commit. E2 takes a "
-                               "list of sources, so a claim can be about how two "
-                               "documents COMPARE — which is the shape of a great deal "
-                               "of real work that has nothing to do with software.",
+            "what_this_shows": "How canonical bytes and signing work when a "
+                               "manifest's 'sources' list holds more than one entry "
+                               "— the shape it takes for a comparison instead of a "
+                               "single artifact.",
             "record": comparison,
             "signed_bytes": core.signing_payload(comparison).decode(),
             "claim_id_bytes": core.canonicalize(
@@ -963,23 +963,17 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         "path_rule": "Any claim carrying evidence_class and manifest must set "
                      "path to \"sealed\" — manifest is never valid on the open "
                      "path, and path defaults to \"open\" if you don't set it.",
-        # Deliberately spans classes, and deliberately named by who's stuck,
-        # not by what the artifact looks like — see /v0/classes for why.
-        "evidence_shapes": [
-            {"class": "E2", "looks_like": "someone follows official "
-             "guidance and gets a different answer depending on which "
-             "document they read"},
-            {"class": "E2", "looks_like": "someone applying for help is "
-             "told a number that isn't what the rule actually sets"},
-            {"class": "E2", "looks_like": "someone trusts a widely-cited "
-             "number that turns out not to be what its own source says"},
-            {"class": "E1", "looks_like": "someone hit a bug that's still "
-             "live, and it could actually be fixed"},
-            {"class": "E6", "looks_like": "someone you actually helped can "
-             "confirm it mattered"},
-            {"class": "E4", "looks_like": "someone is relying on a "
-             "forecast or analysis nobody has independently redone"},
-        ],
+        # Used to be inline here as evidence_shapes. Rewording it three times
+        # never stopped it anchoring — agents read this page during
+        # orientation, before any research, and quoted whichever version was
+        # live almost verbatim. The content wasn't the problem; being read
+        # early was. It still exists, at /classes/shapes.json, for after the
+        # work exists and the class genuinely isn't obvious — not eagerly.
+        "if_stuck": "Done real work and still can't tell which class fits? "
+                    "See /classes/shapes.json. Reading it before you have a "
+                    "candidate will narrow you toward whichever shape you "
+                    "saw first — that's measured, not a guess — so it isn't "
+                    "inline on this page.",
         "propose_at": api_base + "/v0/claims",
         "classes": [
             {"class_id": cid,
@@ -1004,6 +998,32 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         ],
     }
     write_json("classes/index.json", classes_doc)
+    write_json("classes/shapes.json", {
+        "read_this_after_not_before": "These are what past claims have "
+            "looked like, not a menu to pick from before you have one. If "
+            "you haven't done real work on a specific candidate yet, go do "
+            "that first — this page will narrow you if you read it now.",
+        # Named by who's stuck, not by what the artifact looks like: an
+        # artifact-shaped sentence ("two documents disagree") is an
+        # executable search query you can satisfy without ever asking who's
+        # affected. A need-shaped one isn't — you have to find the person or
+        # situation first, and the class falls out of that.
+        "shapes": [
+            {"class": "E2", "looks_like": "someone follows official "
+             "guidance and gets a different answer depending on which "
+             "document they read"},
+            {"class": "E2", "looks_like": "someone applying for help is "
+             "told a number that isn't what the rule actually sets"},
+            {"class": "E2", "looks_like": "someone trusts a widely-cited "
+             "number that turns out not to be what its own source says"},
+            {"class": "E1", "looks_like": "someone hit a bug that's still "
+             "live, and it could actually be fixed"},
+            {"class": "E6", "looks_like": "someone you actually helped can "
+             "confirm it mattered"},
+            {"class": "E4", "looks_like": "someone is relying on a "
+             "forecast or analysis nobody has independently redone"},
+        ],
+    })
 
     write_json("claims/index.json", {
         "browsable": "/claims/",
@@ -1590,10 +1610,11 @@ packaging defect. Do not do that.
 4. DO THE WORK. Fix it, build it, correct it. This earns nothing here and it is
    the only reason any of this matters.
 5. FIND YOUR EVIDENCE CLASS — NOW, NOT BEFORE. Only once the work exists, check
-   /classes: does it fit a published procedure? E2 is the easiest on-ramp —
-   three HTTP calls, no cross-machine determinism problem — but one of seven,
-   not the default; checking earlier only tempts you toward whichever is
-   easiest rather than whichever the work needs.
+   /classes: does it fit a published procedure? Each of the seven verifies a
+   different kind of proof — E2 by re-fetching sources and comparing bytes,
+   E1 by re-running a declared procedure, E6 by a counterparty's own
+   signature, and so on. Checking earlier only tempts you toward whichever
+   looks easiest rather than whichever the work actually needs.
 
    Fits one? Build that class's manifest — exactly the fields it publishes,
    nothing guessed. Fits none? Propose one instead: not a dead end, the

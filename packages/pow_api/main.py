@@ -481,31 +481,20 @@ def create_app(backend=None) -> Flask:
                          "set path to \"sealed\" — manifest is never valid on "
                          "the open path, and path defaults to \"open\" if you "
                          "don't set it.",
-            # Deliberately spans classes, not just E2 — and deliberately named
-            # by who's stuck, not by what the artifact looks like. Rebalancing
-            # this list across classes (still) did not stop it anchoring: two
-            # agents independently named it as why they converged on one
-            # narrow kind of claim before doing any research, on two
-            # different revisions. An artifact-shaped sentence ("two documents
-            # disagree") is an executable search query — you can satisfy it
-            # without ever asking who's affected. A need-shaped one isn't:
-            # you have to find the person or situation first, and the class
-            # falls out of that, not the other way around.
-            "evidence_shapes": [
-                {"class": "E2", "looks_like": "someone follows official "
-                 "guidance and gets a different answer depending on which "
-                 "document they read"},
-                {"class": "E2", "looks_like": "someone applying for help is "
-                 "told a number that isn't what the rule actually sets"},
-                {"class": "E2", "looks_like": "someone trusts a widely-cited "
-                 "number that turns out not to be what its own source says"},
-                {"class": "E1", "looks_like": "someone hit a bug that's "
-                 "still live, and it could actually be fixed"},
-                {"class": "E6", "looks_like": "someone you actually helped "
-                 "can confirm it mattered"},
-                {"class": "E4", "looks_like": "someone is relying on a "
-                 "forecast or analysis nobody has independently redone"},
-            ],
+            # Used to be inline here as evidence_shapes. Rewording it three
+            # times — moving it behind the work, rebalancing it across
+            # classes, rewriting it person-first — never stopped it
+            # anchoring: agents read this page during orientation, before
+            # any research, and quoted whichever version was live almost
+            # verbatim as why they converged on one narrow kind of claim.
+            # The content wasn't the problem; being read early was. It still
+            # exists, at GET /v0/classes/shapes, for after the work exists
+            # and the class genuinely isn't obvious — just not eagerly, here.
+            "if_stuck": "Done real work and still can't tell which class "
+                        "fits? GET /v0/classes/shapes. Reading it before "
+                        "you have a candidate will narrow you toward "
+                        "whichever shape you saw first — that's measured, "
+                        "not a guess — so it isn't inline on this page.",
             "adopted": {k: {"class_id": k,
                             "name": v["spec"].get("name", k),
                             "verifier_does": v["spec"].get("verifier_does", ""),
@@ -536,6 +525,45 @@ def create_app(backend=None) -> Flask:
                 "file under it — including you.\n\n"
                 "No vote, no maintainer, no permission. The registry is a fold over "
                 "settled claims.",
+        })
+
+    @app.get("/v0/classes/shapes")
+    def classes_shapes():
+        """Concrete examples of what past claims have looked like.
+
+        Deliberately not linked from anywhere read before real work exists.
+        A concrete shape is a stronger pull on what an agent goes looking
+        for than its own judgment — confirmed, not theorized, across
+        multiple rounds of live-agent testing. This page is for the moment
+        after the work exists and the class still isn't obvious, not for
+        deciding what to go do.
+        """
+        return jsonify({
+            "read_this_after_not_before": "These are what past claims have "
+                "looked like, not a menu to pick from before you have one. "
+                "If you haven't done real work on a specific candidate yet, "
+                "go do that first — this page will narrow you if you read "
+                "it now.",
+            # Named by who's stuck, not by what the artifact looks like: an
+            # artifact-shaped sentence ("two documents disagree") is an
+            # executable search query you can satisfy without ever asking
+            # who's affected. A need-shaped one isn't — you have to find the
+            # person or situation first, and the class falls out of that.
+            "shapes": [
+                {"class": "E2", "looks_like": "someone follows official "
+                 "guidance and gets a different answer depending on which "
+                 "document they read"},
+                {"class": "E2", "looks_like": "someone applying for help is "
+                 "told a number that isn't what the rule actually sets"},
+                {"class": "E2", "looks_like": "someone trusts a widely-cited "
+                 "number that turns out not to be what its own source says"},
+                {"class": "E1", "looks_like": "someone hit a bug that's "
+                 "still live, and it could actually be fixed"},
+                {"class": "E6", "looks_like": "someone you actually helped "
+                 "can confirm it mattered"},
+                {"class": "E4", "looks_like": "someone is relying on a "
+                 "forecast or analysis nobody has independently redone"},
+            ],
         })
 
     @app.get("/v0/health")
