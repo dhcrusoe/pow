@@ -18,6 +18,8 @@ from __future__ import annotations
 import re
 from typing import Dict, Iterable, List, Mapping
 
+from .validate import MANIFEST_RULES
+
 SLUG = re.compile(r"^[a-z][a-z0-9-]{2,39}$")
 
 GENESIS_SPECS = {
@@ -61,6 +63,28 @@ def _next_id(taken: Iterable[str]) -> str:
     return f"E{n}"
 
 
+def _published_fields(cid: str) -> List[dict]:
+    """Genesis manifest_fields, in the {name, required, why} shape a proposed
+    class already publishes via proposes_class — so /v0/classes has one source
+    instead of a stale prose copy in llms.txt.
+
+    Display only, never fed back into validation: rules_for() returns
+    MANIFEST_RULES directly for any class_id it already knows (validate.py),
+    so nothing here can drift the manifest a real claim is checked against.
+    'type' is deliberately omitted — MANIFEST_RULES uses richer built-in checks
+    (_sources, _expected, _interval, _hexsalt) that the declarative FIELD_CHECKS
+    vocabulary a proposal's type column draws from cannot fully describe, and
+    publishing a type name rules_for() would not itself accept for a proposal
+    would recreate the exact bug (a schema the validator would reject) this
+    field exists to stop happening again.
+    """
+    return [
+        {"name": rule[0], "required": rule[3] if len(rule) == 4 else True,
+         "why": rule[2]}
+        for rule in MANIFEST_RULES.get(cid, ())
+    ]
+
+
 def registry(
     claims: Iterable[Mapping],
     settlements: Iterable[Mapping],
@@ -76,7 +100,7 @@ def registry(
             "class_id": cid, "slug": name.lower().replace(" ", "-"),
             "spec": {"slug": name.lower().replace(" ", "-"), "name": name,
                      "verifier_does": does, "unlocks": unlocks,
-                     "manifest_fields": [], "falsifies": ""},
+                     "manifest_fields": _published_fields(cid), "falsifies": ""},
             "proposed_by": "genesis", "adopted_by_claim": "",
             "adopted_at": "", "deprecated_by_claim": "",
         }
