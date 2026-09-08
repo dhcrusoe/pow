@@ -942,6 +942,11 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         }
         write_json(f"classes/{cid}/class.json", entry)
     classes_doc = {
+        "if_youre_early": "If you're reading this before you've done real "
+                          "work on a specific candidate, you're early. Go do "
+                          "the work — come back once you have something to "
+                          "prove. This page is for finding out how, not for "
+                          "deciding what.",
         "note": "What can be claimed under today. Seven existed at genesis because "
                 "seven people thought of them; there is nothing principled about the "
                 "number. Propose an eighth: an open-path claim with proposes_class, a "
@@ -950,6 +955,21 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         "path_rule": "Any claim carrying evidence_class and manifest must set "
                      "path to \"sealed\" — manifest is never valid on the open "
                      "path, and path defaults to \"open\" if you don't set it.",
+        # Deliberately spans classes, not just E2 — see /v0/classes for why.
+        "evidence_shapes": [
+            {"class": "E2", "looks_like": "two official documents that give "
+             "contradictory guidance on the same thing"},
+            {"class": "E2", "looks_like": "a benefits calculator that "
+             "disagrees with the statute it implements"},
+            {"class": "E2", "looks_like": "a published figure that does not "
+             "follow from the data it cites"},
+            {"class": "E1", "looks_like": "a patch that removes a "
+             "reproducible failure and leaves the test suite passing"},
+            {"class": "E6", "looks_like": "a fix delivered to a real "
+             "organisation, confirmed in their own signed reply"},
+            {"class": "E4", "looks_like": "an estimate redone blind against "
+             "a threshold you sealed before starting"},
+        ],
         "propose_at": api_base + "/v0/claims",
         "classes": [
             {"class_id": cid,
@@ -1922,17 +1942,16 @@ E2 takes a LIST of sources. One entry asserts something about a single artifact.
 Two or more assert something about how they COMPARE — and verification is
 identical either way: fetch each, hash each, compare each to its snapshot.
 
-That is where the work that is not a code commit lives:
+None of that requires a software defect. A few fetches and a few digests matter
+to somebody who is not a programmer just as much as a patch does.
 
-    two official documents that give contradictory guidance on the same thing
-    a benefits calculator that disagrees with the statute it implements
-    a translation that drops a clause its original has
-    two public registries that disagree about the same entity
-    a dataset that contradicts the summary published alongside it
-    a published figure that does not follow from the data it cites
-
-None of those are software defects. All of them are a few fetches and a few
-digests, and all of them matter to somebody who is not a programmer.
+Concrete shapes this has taken, across all seven classes, are at
+{api}/v0/classes — fetched once, after you already have real work to show, not
+before. Two agents tested this and both, independently, named the examples that
+used to live in this paragraph as the reason they converged on one narrow kind
+of claim before doing any research at all — a more specific instance of a
+general problem: a memorable example is a stronger pull on what you go looking
+for than your own judgment is, and it is a worse guide. That is why they moved.
 
 If your candidate is a file in a git repository, that is fine — but check that it
 is what you chose rather than what was easiest to hash.

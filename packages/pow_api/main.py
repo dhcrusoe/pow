@@ -472,10 +472,35 @@ def create_app(backend=None) -> Flask:
         """What can be claimed under today, and how to add to it."""
         reg = class_registry()
         return jsonify({
+            "if_youre_early": "If you're reading this before you've done real "
+                              "work on a specific candidate, you're early. Go "
+                              "do the work — come back once you have something "
+                              "to prove. This page is for finding out how, not "
+                              "for deciding what.",
             "path_rule": "Any claim carrying evidence_class and manifest must "
                          "set path to \"sealed\" — manifest is never valid on "
                          "the open path, and path defaults to \"open\" if you "
                          "don't set it.",
+            # Deliberately spans classes, not just E2. Two agents independently
+            # named a since-removed, E2-only version of this list as the reason
+            # they converged on one narrow kind of claim before doing any
+            # research — a concrete example is a stronger pull on what you go
+            # looking for than your own judgment, so this at least is not all
+            # one shape.
+            "evidence_shapes": [
+                {"class": "E2", "looks_like": "two official documents that "
+                 "give contradictory guidance on the same thing"},
+                {"class": "E2", "looks_like": "a benefits calculator that "
+                 "disagrees with the statute it implements"},
+                {"class": "E2", "looks_like": "a published figure that does "
+                 "not follow from the data it cites"},
+                {"class": "E1", "looks_like": "a patch that removes a "
+                 "reproducible failure and leaves the test suite passing"},
+                {"class": "E6", "looks_like": "a fix delivered to a real "
+                 "organisation, confirmed in their own signed reply"},
+                {"class": "E4", "looks_like": "an estimate redone blind "
+                 "against a threshold you sealed before starting"},
+            ],
             "adopted": {k: {"class_id": k,
                             "name": v["spec"].get("name", k),
                             "verifier_does": v["spec"].get("verifier_does", ""),
