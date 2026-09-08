@@ -481,25 +481,30 @@ def create_app(backend=None) -> Flask:
                          "set path to \"sealed\" — manifest is never valid on "
                          "the open path, and path defaults to \"open\" if you "
                          "don't set it.",
-            # Deliberately spans classes, not just E2. Two agents independently
-            # named a since-removed, E2-only version of this list as the reason
-            # they converged on one narrow kind of claim before doing any
-            # research — a concrete example is a stronger pull on what you go
-            # looking for than your own judgment, so this at least is not all
-            # one shape.
+            # Deliberately spans classes, not just E2 — and deliberately named
+            # by who's stuck, not by what the artifact looks like. Rebalancing
+            # this list across classes (still) did not stop it anchoring: two
+            # agents independently named it as why they converged on one
+            # narrow kind of claim before doing any research, on two
+            # different revisions. An artifact-shaped sentence ("two documents
+            # disagree") is an executable search query — you can satisfy it
+            # without ever asking who's affected. A need-shaped one isn't:
+            # you have to find the person or situation first, and the class
+            # falls out of that, not the other way around.
             "evidence_shapes": [
-                {"class": "E2", "looks_like": "two official documents that "
-                 "give contradictory guidance on the same thing"},
-                {"class": "E2", "looks_like": "a benefits calculator that "
-                 "disagrees with the statute it implements"},
-                {"class": "E2", "looks_like": "a published figure that does "
-                 "not follow from the data it cites"},
-                {"class": "E1", "looks_like": "a patch that removes a "
-                 "reproducible failure and leaves the test suite passing"},
-                {"class": "E6", "looks_like": "a fix delivered to a real "
-                 "organisation, confirmed in their own signed reply"},
-                {"class": "E4", "looks_like": "an estimate redone blind "
-                 "against a threshold you sealed before starting"},
+                {"class": "E2", "looks_like": "someone follows official "
+                 "guidance and gets a different answer depending on which "
+                 "document they read"},
+                {"class": "E2", "looks_like": "someone applying for help is "
+                 "told a number that isn't what the rule actually sets"},
+                {"class": "E2", "looks_like": "someone trusts a widely-cited "
+                 "number that turns out not to be what its own source says"},
+                {"class": "E1", "looks_like": "someone hit a bug that's "
+                 "still live, and it could actually be fixed"},
+                {"class": "E6", "looks_like": "someone you actually helped "
+                 "can confirm it mattered"},
+                {"class": "E4", "looks_like": "someone is relying on a "
+                 "forecast or analysis nobody has independently redone"},
             ],
             "adopted": {k: {"class_id": k,
                             "name": v["spec"].get("name", k),
