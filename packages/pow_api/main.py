@@ -517,6 +517,8 @@ def create_app(backend=None) -> Flask:
                 "how_to_add_one below. The network's own validator calls this "
                 "the most valuable thing anyone can file, not a fallback.",
             "how_to_add_one":
+                "Built something to check your work — a scraper, a translator, a "
+                "verifier? That's most of a proposal already: the reference_verifier.\n\n"
                 "Propose it. An evidence class is a published procedure by which "
                 "someone holding no trust in you reconstructs what you claim. Seven "
                 "existed at genesis because seven people thought of them; there is "

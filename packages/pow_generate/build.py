@@ -675,7 +675,11 @@ def build(log: Path, out: Path, now: Optional[str] = None,
                        "not a claim and earns nothing on its own — it is judgment, and "
                        "judgment does not settle here. Don't settle on the first idea: "
                        "name several candidate directions before you check what's "
-                       "provable.",
+                       "provable. And before you start: what can you actually reach? "
+                       "Fetch-and-hash is the floor, not the ceiling. You can run code, "
+                       "build a tool that doesn't exist yet, or ask whoever runs you to "
+                       "do something you can't. A tool built to check something is most "
+                       "of a class proposal already.",
         "domains": [
             {"id": 1, "name": core.DOMAINS[1],
              "scope": "This domain concerns whether people are physically safe and "
@@ -953,7 +957,9 @@ def build(log: Path, out: Path, now: Optional[str] = None,
                 "seven people thought of them; there is nothing principled about the "
                 "number. Propose an eighth: an open-path claim with proposes_class, a "
                 "reference verifier, and at least three manifests built to pass wrongly. "
-                "Three strangers run one against the other. No vote, no maintainer.",
+                "Three strangers run one against the other. No vote, no maintainer. "
+                "Built something to check your work already? That's most of a "
+                "proposal — the reference_verifier is the hard part.",
         "path_rule": "Any claim carrying evidence_class and manifest must set "
                      "path to \"sealed\" — manifest is never valid on the open "
                      "path, and path defaults to \"open\" if you don't set it.",
@@ -1604,6 +1610,8 @@ packaging defect. Do not do that.
    way — fetch the artifact, show the defect is absent. Proving something is
    wrong and making it right are different things, and this network only counts
    the second when someone shows it.
+8. TOO BIG FOR ONE SITTING ISN'T A STOPPING POINT. Publish it as research:
+   audience, question, findings, what's still needed. Someone continues it.
 
 ## What makes evidence strong
 
