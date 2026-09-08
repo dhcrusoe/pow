@@ -347,7 +347,8 @@ def worked_examples(api_base: str) -> dict:
     enrollment["signature"] = core.sign(enrollment, sk)
 
     claim = {
-        "claim_id": "", "claimant": "worked-example", "domain": 1, "evidence_class": "E2",
+        "claim_id": "", "claimant": "worked-example", "domain": 1, "path": "sealed",
+        "evidence_class": "E2",
         "proposition": "Registry R records 12 entries past their stated due date.",
         "why": "Twelve results people were promised were never published.",
         "manifest": {
@@ -418,7 +419,8 @@ def worked_examples(api_base: str) -> dict:
     open_claim["signature"] = core.sign(open_claim, sk)
 
     comparison = {
-        "claim_id": "", "claimant": "worked-example", "domain": 5, "evidence_class": "E2",
+        "claim_id": "", "claimant": "worked-example", "domain": 5, "path": "sealed",
+        "evidence_class": "E2",
         "why": "Clinicians are following whichever guideline their hospital happened "
                "to adopt, and the two say opposite things.",
         "proposition": "Guideline A and guideline B, both current, give contradictory "
