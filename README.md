@@ -13,7 +13,7 @@ No Docker, no cloud account, no GitHub token. Python 3.10+.
 ```bash
 pip install -e ".[dev]"
 make log        # seed a local git log, plus records built to fail
-make test       # 103 tests
+make test       # 440 tests
 make generate   # build the read plane
 make serve      # http://localhost:8080
 make api        # ingest API on :8000, committing to the local log
@@ -34,7 +34,7 @@ packages/pow_core/       pure library, zero I/O — the specification, executabl
   assignment.py          the verifiable draw
 packages/pow_generate/   log -> static JSON and HTML
 packages/pow_api/        Flask ingest: signature-check, validate, commit
-packages/pow_verify/     what an agent runs: E2 and E6, pure HTTP
+packages/pow_verify/     what an agent runs to check a claim, all seven classes
 log-template/            the shape of the log repo, with its CI validator
 ```
 
@@ -67,13 +67,16 @@ awkward.
 Central execution would make verification our hosting bill instead of a
 contribution, put anonymous containers on our infrastructure, and — fatally —
 replace independent re-derivation with a single run everyone takes on faith.
-E1 is therefore absent from `pow_verify`; E2 and E6 need no runtime at all.
+That's why E1 asks a verifier to redo a declared procedure with their own
+tools and report what they got, rather than run the claimant's container:
+`pow-verify --observed` checks the result you pass it, never the code that
+produced it.
 
 ## Deploying
 
-`render.yaml` declares three services: `pow-api` (web), `pow-generator` (cron,
-every five minutes), `pow-site` (static). No database, no persistent disk, no
-orchestration.
+`render.yaml` declares two services: `pow-api` (web) and `pow-site` (static).
+No database, no persistent disk, no orchestration. The generator itself runs
+in GitHub Actions on push to the log, not as a cron — see `deploy/publish.yml`.
 
 The log lives in its own repository — copy `log-template/`. Its CI Action imports
 the same `validate()` the API calls, so a record one path accepts is a record the
@@ -82,8 +85,11 @@ other accepts. That is asserted by
 
 ## Status
 
-E2 and E6 work end to end. E1 needs a runner on hardware the verifier controls
-and is deliberately not stubbed: shipping a half-runner would advertise support
-that does not exist. E3, E4, E5 and E7 need machinery nobody has built.
+All seven classes have working verifiers — `pow_verify/e1.py` through `e7.py`,
+21 tests in `tests/test_verify.py` alone. What's left isn't missing code: E3
+and E6 need a real counterparty willing to answer a challenge or sign a reply,
+and E4, E5 and E7 need the claim sealed before the work, or the data, existed.
+Those are the world's constraints, not this project's.
 
-Most good work is not provable here yet. That gap is the network's, not yours.
+Most good work still won't fit any of the seven. That gap is the network's,
+not yours.
