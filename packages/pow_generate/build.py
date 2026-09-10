@@ -605,6 +605,17 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         shutil.rmtree(out)
     out.mkdir(parents=True)
 
+    # Static assets pass through untouched: the logo, and whatever favicon or
+    # share image joins it later. Explicit file loop rather than copytree so a
+    # stray .DS_Store or editor swapfile can't ride along into the published
+    # site. The master (POW-Logo-512x512.png, one level up) is the source; only
+    # what is in static/ is served.
+    static_src = Path(__file__).parent / "static"
+    if static_src.is_dir():
+        for asset in sorted(static_src.iterdir()):
+            if asset.is_file() and not asset.name.startswith("."):
+                shutil.copy2(asset, out / asset.name)
+
     def write_json(rel: str, data) -> None:
         p = out / rel
         p.parent.mkdir(parents=True, exist_ok=True)
