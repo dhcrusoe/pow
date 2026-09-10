@@ -19,13 +19,27 @@
 {% block jsonld %}{% endblock %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+{# Newsreader for h1/h2 only — a serif built for on-screen reading, not a
+   revival of one. Fraunces read as antiqued at heading weight; this keeps the
+   same trick (optical-size axis left variable, 6..72, so
+   font-optical-sizing:auto gives the hero a display cut and a policy-page h2
+   a text cut off the same file) without the swashy ball terminals. IBM Plex
+   Sans stays for the body in place of Inter: a coherent pair for
+   technical-but-humane contexts, not the reflexive SaaS default. JetBrains
+   Mono is untouched. #}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 :root{
   /* Ground: a deep forest floor rather than blue-black slate. Same darkness,
      warmer and greener, so the palette above it reads as growing things. */
-  --bg:#0A0F0C; --panel:rgba(171,255,79,.045); --stroke:rgba(171,255,79,.13);
-  --stroke-2:rgba(171,255,79,.22);
+  --bg:#0A0F0C;
+  /* Structure is neutral on purpose. These used to be lime (rgba(171,255,79,…))
+     — the "one per screen" emphasis colour, tinting every card fill and every
+     hairline on the site, which gave card surfaces a faint green glow. White at
+     low alpha instead, luminance-matched so borders keep exactly the weight
+     they had. The ground stays warm; only what sits on it goes grey. */
+  --panel:rgba(255,255,255,.04); --stroke:rgba(255,255,255,.12);
+  --stroke-2:rgba(255,255,255,.2);
   --ink:#F2F7F3; --ink-2:#B4C4B8; --ink-3:#7C8F82;
 
   /* Brand accent and semantic colour are now separate. Mint used to be both,
@@ -41,34 +55,38 @@
   /* Six domains, six hues. This is the substance of the network and it used
      to render as three identical grey chips with numbers in them. Colour here
      encodes a category, which is what colour is for — and the domain NAME
-     always travels with it, so the hue is never the only signal. */
-  --d1:#F21B3F;  /* safety, justice & voice */
-  --d2:#08BDBD;  /* the commons we all run on */
-  --d3:#29BF12;  /* environmental sustainability */
-  --d4:#FF9914;  /* equity & fair living standards */
-  --d5:#ABFF4F;  /* education */
-  --d6:#B47BFF;  /* health & wellbeing */
+     always travels with it, so the hue is never the only signal.
+
+     These five used to be the exact hex of red/teal/green/amber/lime above —
+     a domain and a verdict state could be pixel-identical, so a claim eyebrow
+     (claim.html colours it var(--d{{domain}})) could read as shouting FAIL or
+     PASS by accident of which domain it was in. Chosen in OKLCH, not RGB/HSL:
+     red, amber, lime and green already fill the whole warm half of the wheel
+     (roughly 0°-160° in real perceptual hue), so the fix isn't six arbitrary
+     new colours, it's a rule — warm hues mean an outcome, cool hues mean a
+     category — built entirely from the wheel's open cool half. d6 was never
+     a collision and is untouched. */
+  --d1:#38CF8E;  /* safety, justice & voice — jade */
+  --d2:#30B0CA;  /* the commons we all run on — azure */
+  --d3:#2388E7;  /* environmental sustainability — cobalt */
+  --d4:#EC5EF7;  /* equity & fair living standards — fuchsia */
+  --d5:#F749AC;  /* education — rose */
+  --d6:#B47BFF;  /* health & wellbeing — violet (unchanged) */
   --r:12px}
 *{box-sizing:border-box}
-/* One soft wash, lime over teal, at an alpha you notice only if it is removed.
-   Growing things, not a dashboard gradient. */
-.glow{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
-.glow::before,.glow::after{content:"";position:absolute;border-radius:50%;filter:blur(130px)}
-.glow::before{width:56rem;height:56rem;top:-26rem;left:50%;transform:translateX(-55%);
-  background:radial-gradient(circle,rgba(171,255,79,.10),transparent 68%)}
-.glow::after{width:42rem;height:42rem;top:22rem;right:-18rem;
-  background:radial-gradient(circle,rgba(8,189,189,.09),transparent 70%)}
-@media (prefers-reduced-motion:reduce){.glow{display:none}}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;
   font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
 .wrap{max-width:64rem;margin:0 auto;padding:0 1.5rem}
-h1,h2,h3{font-family:Manrope,sans-serif;font-weight:800;letter-spacing:-.025em;
-  line-height:1.1;margin:0;text-wrap:balance}
+/* h3 carries no rule of its own — nothing on the site uses one yet, and it
+   inherits the body face rather than guessing at a serif weight for content
+   that doesn't exist. */
+h1,h2{font-family:Newsreader,Georgia,serif;font-weight:600;letter-spacing:-.008em;
+  line-height:1.08;margin:0;text-wrap:balance}
 /* Lime means the good: the word in the headline, and the numbers that count it.
    Teal is identity — links, eyebrows, the mark. Two colours, two jobs. */
 h1 em{font-style:normal;color:var(--lime)}
 /* The type scale belongs here, not inline in a template where it drifts. */
-h1.hero{font-size:clamp(2rem,5vw,3.2rem);letter-spacing:-.02em;line-height:1.06}
+h1.hero{font-size:clamp(2rem,5vw,3.2rem);letter-spacing:-.005em;line-height:1.05}
 .lede-hero{font-size:1.15rem;margin-top:1.1rem}
 h1.page{font-size:clamp(1.5rem,3.4vw,2.2rem)}
 h1.agent{font-size:clamp(1.8rem,4vw,2.6rem)}
@@ -79,7 +97,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius
 nav{border-bottom:1px solid var(--stroke)}
 nav .wrap{display:flex;justify-content:space-between;align-items:center;
   padding-top:1.1rem;padding-bottom:1.1rem;gap:1rem;flex-wrap:wrap}
-.brand{font-family:Manrope,sans-serif;font-weight:800;font-size:15px;color:var(--ink)}
+.brand{font-weight:600;font-size:15px;color:var(--ink)}
 .brand .qed{color:var(--lime);margin-right:.35rem}
 .navright{display:flex;align-items:baseline;gap:1.4rem}
 .stats{font-size:12px;color:var(--ink-3)}
@@ -104,14 +122,25 @@ nav .wrap{display:flex;justify-content:space-between;align-items:center;
   line-height:1.2;white-space:nowrap}
 .tabbar label:hover{background:var(--accent-soft)}
 /* Active is solid lime with the page's own ground as its text: the brightest
-   pairing this palette can make, and unmistakably the selected one. */
-.tabs input:checked + label{background:var(--lime);border-color:var(--lime);
+   pairing this palette can make, and unmistakably the selected one.
+   ~ .tabbar label, not + label: the labels live one level down inside
+   .tabbar, not as the input's next sibling, so the adjacent combinator here
+   never matched anything — every tab has been rendering "unselected" since
+   this rule was written. Caught by actually running the generator, not by
+   reading the CSS. */
+#t-agent:checked ~ .tabbar label[for=t-agent],
+#t-human:checked ~ .tabbar label[for=t-human]{background:var(--lime);border-color:var(--lime);
   color:var(--bg)}
-.tabs input:focus-visible + label{outline:2px solid var(--ink);outline-offset:3px}
-/* Controls, used only by /sign/. Same button language as the tabs. */
+#t-agent:focus-visible ~ .tabbar label[for=t-agent],
+#t-human:focus-visible ~ .tabbar label[for=t-human]{outline:2px solid var(--ink);outline-offset:3px}
+/* Same button language as the tabs, on <button> (/sign/) and now <a> (the
+   hero CTAs) alike — so it needs its own text-decoration, not just <button>'s
+   implicit none. */
 .btn{cursor:pointer;padding:.66rem 1.1rem;font-size:14px;font-weight:600;
   border-radius:999px;border:1.5px solid var(--lime);background:var(--lime);
-  color:var(--bg);font-family:inherit}
+  color:var(--bg);font-family:inherit;display:inline-flex;align-items:center;
+  text-decoration:none}
+.btn:hover{text-decoration:none}
 .btn.ghost{background:transparent;border-color:var(--accent);color:var(--accent)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 textarea,select{width:100%;background:rgba(0,0,0,.45);color:var(--ink);
@@ -121,6 +150,15 @@ select{width:auto;padding:.6rem .7rem;font-size:13px}
 .panel{display:none}
 #t-agent:checked ~ .panels > .p-agent,
 #t-human:checked ~ .panels > .p-human{display:block}
+/* A row of pill buttons outside the tab control itself — the hero CTAs, and
+   anywhere else a couple of .btn sit side by side. */
+.btnrow{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+/* Disclosure: the browser's own marker, tinted rather than reinvented.
+   Spacing stays the caller's call — <details> shows up inside a card, inside
+   a hairlined list row, and bare, and no one rule fits all three. */
+summary{cursor:pointer;color:var(--ink-2);font-weight:600}
+summary::marker{color:var(--accent)}
+summary:hover{color:var(--ink)}
 @media (max-width:30rem){.navright{gap:.9rem}.stats{font-size:11px}}
 section{padding:3rem 0;border-bottom:1px solid var(--stroke)}
 /* The last rule on the page used to run straight into the footer, drawing a line
@@ -154,9 +192,9 @@ section:last-of-type{border-bottom:0}
 .chip.FAIL{color:var(--red);border-color:var(--red)}
 .chip.INELIGIBLE{color:var(--red);border-color:var(--stroke)}
 .chip.UNRESOLVABLE{color:var(--amber);border-color:var(--amber)}
-.stat .n{font-family:Manrope,sans-serif;font-weight:800;
+.stat .n{font-weight:600;
   font-size:clamp(2.4rem,5.5vw,3.6rem);line-height:.95;color:var(--lime);
-  letter-spacing:-.03em}
+  letter-spacing:-.01em}
 .stat .n s{text-decoration:none;font-size:.5em;opacity:.7;margin-left:.05em}
 
 /* Six domains, told to a human in two seconds. */
@@ -174,7 +212,7 @@ pre{background:rgba(0,0,0,.45);border:1px solid var(--stroke);border-radius:var(
   color:var(--ink-2);line-height:1.75}
 .empty{border:1px dashed var(--stroke);border-radius:var(--r);padding:2rem;
   text-align:center;color:var(--ink-2)}
-.empty b{display:block;font-family:Manrope,sans-serif;color:var(--ink);
+.empty b{display:block;font-weight:600;color:var(--ink);
   font-size:1.15rem;margin-bottom:.5rem}
 table{border-collapse:collapse;width:100%;font-size:13.5px}
 th,td{text-align:left;padding:.6rem .7rem;border-bottom:1px solid var(--stroke);vertical-align:top}
@@ -199,7 +237,6 @@ footer{padding:2.5rem 0;color:var(--ink-3);font-size:12.5px}
 {% endif %}
 </head>
 <body>
-<div class="glow" aria-hidden="true"></div>
 <nav><div class="wrap">
   <a class="brand" href="/"><span class="qed">&#8718;</span>Proof-of-Worth</a>
   {# Three live readouts and a destination were wearing one style — same font,
