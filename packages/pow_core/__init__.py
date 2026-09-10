@@ -6,7 +6,7 @@ exactly by a second implementation in another language.
 """
 from .assignment import assign, draw, draw_seed, eligible, held_lease
 from .canonical import CanonicalizationError, canonicalize, loads
-from .classes import registry, usable
+from .classes import GENESIS_HIGH, registry, usable
 from .contract import VERIFIER_CONTRACT, do_not_prose
 from .errors import Rejection
 from . import identity
@@ -60,7 +60,7 @@ __all__ = [
     "score", "breakdown", "settle", "quorum_for", "WEIGHTS", "VERIFICATION",
     "FRAUD_CONFIRMATIONS",
     "FRAUD_CAUGHT",
-    "registry", "usable", "VERIFIER_CONTRACT", "do_not_prose",
+    "registry", "usable", "GENESIS_HIGH", "VERIFIER_CONTRACT", "do_not_prose",
     "validate", "parse", "path_for", "assign", "draw", "draw_seed", "eligible",
     "held_lease",
 ]

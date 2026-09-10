@@ -947,6 +947,26 @@ def build(log: Path, out: Path, now: Optional[str] = None,
                     f"navigation) and are never valid values for evidence_class.",
         }
         write_json(f"classes/{cid}/class.json", entry)
+
+    # Tombstone every genesis number the registry no longer holds. E1, E3, E5 and
+    # E7 were cut; their per-class files would otherwise linger from an older
+    # build on a host that publishes by sync rather than replace, still reading as
+    # a live, fileable spec. A tombstone overwrites that with the truth, and 404
+    # stays reserved for a number genesis never assigned.
+    for n in range(1, core.GENESIS_HIGH + 1):
+        cid = f"E{n}"
+        if cid in reg:
+            continue
+        write_json(f"classes/{cid}/class.json", {
+            "class_id": cid,
+            "status": "removed",
+            "adopted_by_claim": "",
+            "deprecated_by_claim": "",
+            "note": f"{cid} was a genesis evidence class and has been removed. It "
+                    f"is not adopted, has no verifier, and cannot be filed — a "
+                    f"claim citing it is rejected. The adopted classes are at "
+                    f"/classes/index.json.",
+        })
     classes_doc = {
         "if_youre_early": "If you're reading this before you've done real "
                           "work on a specific candidate, you're early. Go do "
@@ -2022,11 +2042,14 @@ disagrees with both copies; nothing should.
 
     E4 manifest: seal_url    where the threshold you are opening is published
                  plan_salt   at least 32 hex characters
-                 plan        the plan you sealed, revealed in full
+                 plan        the plan you sealed, revealed in full — a JSON
+                             object, not a prose sentence
                  inputs      a LIST of {{url, snapshot_sha256}} — what to work from
-                 threshold   the band you sealed BEFORE starting, as value, scale,
-                             unit, lo and hi; a reproduction lands in it or does not
-                 result      what you got
+                 threshold   the band you sealed BEFORE starting, as {{value,
+                             scale, unit, lo, hi}} with scaled integers; a
+                             reproduction lands in it or does not
+                 result      what you got, in that same {{value, scale, unit, lo,
+                             hi}} band shape
 
 E2 and E6 are pure HTTP — no container, no runtime, no install. E4 asks you to
 redo a declared analysis with your own tools and land inside a band the claimant

@@ -295,6 +295,26 @@ def test_classes_are_published_with_their_health(log, tmp_path):
     assert "Propose an eighth" in idx["note"]
 
 
+def test_a_cut_genesis_class_publishes_a_tombstone_not_a_live_spec(log, tmp_path):
+    """A removed class's per-class file lingers on a host that syncs rather than
+    replaces. It must read as removed, not as a fileable spec, and 404 stays for
+    a number genesis never assigned."""
+    out = tmp_path / "site"
+    build(log, out, api_base=API)
+    live = {c["class_id"] for c in json.loads(
+        (out / "classes" / "index.json").read_text())["classes"]}
+
+    for cid in ("E1", "E3", "E5", "E7"):
+        assert cid not in live
+        stone = json.loads((out / "classes" / cid / "class.json").read_text())
+        assert stone["status"] == "removed"
+        assert "spec" not in stone and "manifest_fields" not in stone
+        assert "verifier_does" not in stone
+        assert "removed" in stone["note"] and "cannot be filed" in stone["note"]
+
+    assert not (out / "classes" / "E8").exists()
+
+
 def test_the_api_says_how_to_add_a_class(tmp_path, keys):
     backend = LocalBackend(tmp_path / "log")
     app = create_app(backend)

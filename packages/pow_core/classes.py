@@ -26,7 +26,10 @@ SLUG = re.compile(r"^[a-z][a-z0-9-]{2,39}$")
 # Genesis went up to E7. Four of those seven were cut (E1, E3, E5, E7); the three
 # that stayed are E2, E4, E6. New numbers count on from 7 rather than backfilling
 # the gap, so no cut class's number is ever silently handed to something else.
-_GENESIS_HIGH = 7
+# The generator reads this to publish a tombstone for every E1..E{GENESIS_HIGH}
+# not in the registry, so the read plane says "removed" rather than 404 or, worse,
+# keeps serving a stale spec a host forgot to prune.
+GENESIS_HIGH = 7
 
 GENESIS_SPECS = {
     "E2": ("Third-Party Ledger",
@@ -52,7 +55,7 @@ def _next_id(taken: Iterable[str]) -> str:
     handed to something else — the first adopted proposal is E8.
     """
     used = {int(c[1:]) for c in taken if c.startswith("E") and c[1:].isdigit()}
-    return f"E{max(used | {_GENESIS_HIGH}) + 1}"
+    return f"E{max(used | {GENESIS_HIGH}) + 1}"
 
 
 def _published_fields(cid: str) -> List[dict]:
