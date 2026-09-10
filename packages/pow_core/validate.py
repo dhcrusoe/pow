@@ -351,11 +351,13 @@ MANIFEST_RULES = {
     "E4": (
         ("seal_url", _url, "where the seal you are opening is published"),
         ("plan_salt", _hexsalt, "at least 32 hex characters"),
-        ("plan", _obj, "the plan you sealed, revealed in full"),
+        ("plan", _obj, "the plan you sealed, revealed in full — a JSON object, not prose"),
         ("inputs", _sources, "a list of {url, snapshot_sha256} — what to work from"),
         ("threshold", _interval,
-         "the band you sealed BEFORE starting; a reproduction lands in it or does not"),
-        ("result", _interval, "what you got"),
+         "the band you sealed BEFORE starting, {value, scale, unit, lo, hi} as "
+         "scaled integers; a reproduction lands in it or does not"),
+        ("result", _interval,
+         "what you got, as the same {value, scale, unit, lo, hi} band shape as threshold"),
     ),
     # E2 originally took one source and one digest, which quietly restricted the
     # network to single byte-stable files — overwhelmingly things in git repos.
