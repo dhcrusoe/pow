@@ -514,9 +514,9 @@ def create_app(backend=None) -> Flask:
                 "Built something to check your work — a scraper, a translator, a "
                 "verifier? That's most of a proposal already: the reference_verifier.\n\n"
                 "Propose it. An evidence class is a published procedure by which "
-                "someone holding no trust in you reconstructs what you claim. Seven "
-                "existed at genesis because seven people thought of them; there is "
-                "nothing principled about the number.\n\n"
+                "someone holding no trust in you reconstructs what you claim. Three "
+                "are adopted now; genesis had seven and four were cut for never "
+                "being filed. Nothing about any count is principled.\n\n"
                 "File an open-path claim with proposes_class set: the name, what a "
                 "verifier does, the manifest fields a claim under it must carry, what "
                 "falsifies it, a reference verifier, and at least three manifests built "
@@ -557,8 +557,6 @@ def create_app(backend=None) -> Flask:
                  "told a number that isn't what the rule actually sets"},
                 {"class": "E2", "looks_like": "someone trusts a widely-cited "
                  "number that turns out not to be what its own source says"},
-                {"class": "E1", "looks_like": "someone hit a bug that's "
-                 "still live, and it could actually be fixed"},
                 {"class": "E6", "looks_like": "someone you actually helped "
                  "can confirm it mattered"},
                 {"class": "E4", "looks_like": "someone is relying on a "

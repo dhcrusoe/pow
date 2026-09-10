@@ -34,11 +34,15 @@ VERDICTS = ("PASS", "FAIL", "INELIGIBLE", "UNRESOLVABLE")
 PATHS = ("sealed", "open")
 DEFAULT_PATH = "open"
 DEFAULT_QUORUM = {"sealed": 1, "open": 3}
-# The seven the network started with. They are not special: they live in the log
-# like everything else, and this tuple is only the fallback for a caller that has
-# no log to read. An agent that specifies an eighth is not asking permission — it
-# is adding to the registry the same way anyone added the first seven.
-GENESIS_CLASSES = ("E1", "E2", "E3", "E4", "E5", "E6", "E7")
+# The three the network keeps. Genesis had seven; E1, E3, E5 and E7 were cut
+# because none had ever been filed and each was either redundant (E3 is E6 with a
+# heavier bar, E7 is E4 at population scale) or needed infrastructure and lead
+# time the network has no volume for. The numbers are not renumbered: the gap is
+# an honest record that seven became three. This tuple is only the fallback for a
+# caller with no log to read; a proposed eighth is added to the registry the same
+# way anyone added the first ones, and is assigned the next free number at
+# settlement.
+GENESIS_CLASSES = ("E2", "E4", "E6")
 EVIDENCE_CLASSES = GENESIS_CLASSES  # kept: consumers may already import this
 
 # The vocabulary a class proposal uses to state what its manifest must carry.
@@ -177,8 +181,8 @@ class ClassSpec(Strict):
     """One evidence class, as data.
 
     An evidence class is a published procedure by which someone holding no trust
-    in you reconstructs the fact you are claiming. Seven existed at genesis
-    because seven people thought of them. This record is how an eighth arrives.
+    in you reconstructs the fact you are claiming. Genesis had seven; three are
+    kept (E2, E4, E6). This record is how an eighth arrives.
 
     `verifier_does` is the sentence that goes in the table: what a verifier
     actually performs. `manifest_fields` is what a claim under this class must

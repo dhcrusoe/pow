@@ -1,8 +1,9 @@
 """The evidence-class registry, derived from the log.
 
-Seven classes existed at genesis because seven people thought of them. Nothing
-about that number is principled, and an agent whose work does not fit any of them
-was, until now, simply invisible — a failure of imagination encoded as a schema.
+Three classes are kept — E2, E4, E6. Genesis had seven; the other four were cut
+for never being filed and for being redundant or infrastructure-heavy. Nothing
+about any count is principled, and an agent whose work does not fit any adopted
+class is not invisible — proposing the class that fits is a claim like any other.
 
 A class arrives the same way anything else does here: someone proposes it, ships
 a reference verifier and a corpus of manifests built to pass wrongly, and three
@@ -22,45 +23,36 @@ from .validate import MANIFEST_RULES
 
 SLUG = re.compile(r"^[a-z][a-z0-9-]{2,39}$")
 
+# Genesis went up to E7. Four of those seven were cut (E1, E3, E5, E7); the three
+# that stayed are E2, E4, E6. New numbers count on from 7 rather than backfilling
+# the gap, so no cut class's number is ever silently handed to something else.
+_GENESIS_HIGH = 7
+
 GENESIS_SPECS = {
-    "E1": ("Declared Replay",
-           "redoes a declared procedure with its own tools and lands in the "
-           "claimant's band",
-           "code, datasets, proofs, benchmarks, audits, translations"),
     "E2": ("Third-Party Ledger",
            "reads a system neither party controls",
            "registries, CVEs, citations, court records, government data"),
-    "E3": ("Attested Partner Metric",
-           "challenges a self-enrolled partner's signed API with a fresh nonce",
-           "private infrastructure metrics, organisational outcomes"),
     "E4": ("Adversarial Reproduction",
            "redoes the work blind against a threshold sealed before it starts",
            "research, analysis, synthesis, fact-checking, forecasting method"),
-    "E5": ("Prospective Settlement",
-           "waits for the world to resolve a sealed prediction",
-           "early warning, foresight, risk detection"),
     "E6": ("Counterparty Attestation",
            "verifies a signature from the party who benefited — their own key, or "
            "their mail server's",
            "services rendered to real organisations"),
-    "E7": ("Aggregate Study",
-           "runs a pre-registered population-level analysis",
-           "pooled campaigns, diffuse impact"),
 }
 
 
 def _next_id(taken: Iterable[str]) -> str:
-    """The next free E-number.
+    """The next E-number: one past the highest ever assigned.
 
     Assigned at settlement in log order, not chosen by the proposer — so two
     agents who both call their class 'E8' do not collide, and any implementation
-    reading the same log assigns the same number.
+    reading the same log assigns the same number. It counts on from _GENESIS_HIGH
+    rather than filling the gap left by the cut classes, so E1/E3/E5/E7 are never
+    handed to something else — the first adopted proposal is E8.
     """
     used = {int(c[1:]) for c in taken if c.startswith("E") and c[1:].isdigit()}
-    n = 1
-    while n in used:
-        n += 1
-    return f"E{n}"
+    return f"E{max(used | {_GENESIS_HIGH}) + 1}"
 
 
 def _published_fields(cid: str) -> List[dict]:

@@ -529,19 +529,16 @@ def test_the_minimum_fields_are_generated_not_written_down(site):
 
 
 def test_the_published_manifest_fields_are_the_ones_the_validator_requires(site):
-    """The E1 block published a schema the door had already stopped accepting.
-
-    An agent assembling an E1 manifest from llms.txt got `image`, `inputs`,
-    `resource_ceiling` and `expected_output_hash` — the container-era shape — and
-    was refused on every field but one, for the network's flagship class, in the
-    file every agent reads first. Nothing asserted this prose, which is why it
-    drifted and why the drift was invisible.
+    """A manifest block in llms.txt that has drifted from the validator refuses
+    an agent on every field but one, for a class it read the shape of in the file
+    every agent reads first. Nothing asserted this prose, which is how the E1
+    block drifted to the container-era shape while the drift stayed invisible.
     """
     from pow_core.validate import REQUIRED_MANIFEST
     txt = (site / "llms.txt").read_text("utf-8")
     classes = txt.split("## Most of the good work here is not code")[1]
 
-    for ec in ("E1", "E2", "E6"):
+    for ec in ("E2", "E4", "E6"):
         block = classes.split(f"{ec} manifest:")[1].split("manifest:")[0]
         for field in REQUIRED_MANIFEST[ec]:
             assert field in block, f"{ec} manifest omits required field {field!r}"
