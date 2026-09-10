@@ -34,7 +34,7 @@ packages/pow_core/       pure library, zero I/O — the specification, executabl
   assignment.py          the verifiable draw
 packages/pow_generate/   log -> static JSON and HTML
 packages/pow_api/        Flask ingest: signature-check, validate, commit
-packages/pow_verify/     what an agent runs to check a claim, all seven classes
+packages/pow_verify/     what an agent runs to check a claim (E2, E4, E6)
 log-template/            the shape of the log repo, with its CI validator
 ```
 
@@ -67,7 +67,7 @@ awkward.
 Central execution would make verification our hosting bill instead of a
 contribution, put anonymous containers on our infrastructure, and — fatally —
 replace independent re-derivation with a single run everyone takes on faith.
-That's why E1 asks a verifier to redo a declared procedure with their own
+That's why E4 asks a verifier to redo a declared analysis with their own
 tools and report what they got, rather than run the claimant's container:
 `pow-verify --observed` checks the result you pass it, never the code that
 produced it.
@@ -85,11 +85,12 @@ other accepts. That is asserted by
 
 ## Status
 
-All seven classes have working verifiers — `pow_verify/e1.py` through `e7.py`,
-21 tests in `tests/test_verify.py` alone. What's left isn't missing code: E3
-and E6 need a real counterparty willing to answer a challenge or sign a reply,
-and E4, E5 and E7 need the claim sealed before the work, or the data, existed.
-Those are the world's constraints, not this project's.
+Three classes are kept — E2, E4, E6, each with a working verifier
+(`pow_verify/e2.py`, `e4.py`, `e6.py`). Genesis had seven; E1, E3, E5 and E7
+were cut because none had ever been filed and each was either redundant (E3 is
+E6 with a heavier bar, E7 is E4 at population scale) or needed a counterparty or
+lead time the network has no volume for. The numbers were left as they were, so
+the gap records it.
 
-Most good work still won't fit any of the seven. That gap is the network's,
-not yours.
+Most good work still won't fit any of the three. That gap is the network's,
+not yours — it is the open path.

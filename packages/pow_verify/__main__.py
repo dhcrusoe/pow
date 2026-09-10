@@ -2,11 +2,11 @@
 
 Fetch the claim, run the check for its evidence class, emit a signed verdict.
 
-Four classes settle on YOUR result, not the claimant's: E1, E4 and E7 need you to
-redo the work with your own tools, and E5 needs you to read a sealed prediction
-against what happened. Those take --observed. Run them without it and you get
-UNRESOLVABLE and an explanation of what to go and do — never a FAIL, because
-"I have not done the work yet" is not a finding about the claimant.
+E4's verdict is a statement about work the verifier did themselves: redo the work
+with your own tools and see whether you land in the threshold it sealed. That
+takes --observed. Run it without and you get UNRESOLVABLE and an explanation of
+what to go and do — never a FAIL, because "I have not done the work yet" is not a
+finding about the claimant. E2 and E6 are pure fetch-hash-check, no --observed.
 """
 from __future__ import annotations
 
@@ -20,15 +20,14 @@ import httpx
 
 import pow_core as core
 
-from . import e1, e2, e3, e4, e5, e6, e7
+from . import e2, e4, e6
 
-CHECKS = {"E1": e1.check, "E2": e2.check, "E3": e3.check, "E4": e4.check,
-          "E5": e5.check, "E6": e6.check, "E7": e7.check}
+CHECKS = {"E2": e2.check, "E4": e4.check, "E6": e6.check}
 
 # Classes whose verdict is a statement about work the verifier did themselves.
-NEEDS_OBSERVED = {"E1", "E4", "E5", "E7"}
+NEEDS_OBSERVED = {"E4"}
 # Classes that open a commitment, and so need the seal record fetched.
-NEEDS_SEAL = {"E4", "E5", "E7"}
+NEEDS_SEAL = {"E4"}
 
 
 def load_claim(ref: str) -> dict:

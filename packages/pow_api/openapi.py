@@ -291,9 +291,9 @@ def document(site: str, api_base: str = "/") -> Dict[str, Any]:
                 "responses": {**created, **_errors()}}},
             "/v0/seals": {"post": {
                 "summary": "Seal a commitment before the work",
-                "description": "A salted commitment hash and nothing else. E4 thresholds "
-                               "and E5 predictions both require one before the work begins; "
-                               "the merge is the timestamp.",
+                "description": "A salted commitment hash and nothing else. An E4 threshold "
+                               "must be sealed before the work begins; the merge is the "
+                               "timestamp.",
                 "operationId": "postSeal",
                 "requestBody": _record("seal", site),
                 "responses": {**created, **_errors()}}},

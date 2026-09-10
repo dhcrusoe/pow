@@ -69,8 +69,8 @@ def test_the_path_must_match_the_id(claim_factory, keys):
     assert exc.value.rule == "path"
 
 
-def test_e1_manifest_must_carry_what_a_stranger_needs(claim_factory, keys):
-    c = claim_factory(evidence_class="E1", manifest={"image": "sha256:x"})
+def test_e4_manifest_must_carry_what_a_stranger_needs(claim_factory, keys):
+    c = claim_factory(evidence_class="E4", manifest={"plan": {"x": 1}})
     c["claim_id"] = core.content_hash(c, exclude=core.Claim.ID_EXCLUDES)
     c["signature"] = core.sign(c, keys["wren"]["private"])
     with pytest.raises(core.Rejection, match="inputs"):

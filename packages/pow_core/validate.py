@@ -59,8 +59,8 @@ def validate(
 
     `classes` is the evidence-class registry, derived from the log. Pass it and a
     class adopted last week is as valid as one that shipped with this code. Omit
-    it and only the genesis seven are known, which is the right default for a
-    caller with no log to read.
+    it and only the adopted genesis classes are known, which is the right default
+    for a caller with no log to read.
 
     `claim` is the claim a verdict rules on, same bargain: pass it and an
     accusation is checked against the thing it accuses, omit it and only the
@@ -348,31 +348,6 @@ def _sig(v):
 # container run before settling UNRESOLVABLE. Cheap shape checks at ingest stop
 # a whole class of garbage from ever reaching someone else's compute.
 MANIFEST_RULES = {
-    # E1 used to require a container image digest and a resource ceiling, on the
-    # theory that two machines only agree if they are the same machine. That is
-    # true of bytes and false of findings, and it made the network's flagship
-    # class unusable: nobody will pull a stranger's multi-gigabyte image to earn
-    # three points. A declared procedure plus a band the verifier must land in
-    # asks for the thing that actually matters — that two strangers working
-    # independently reach the same answer — and asks for nothing else.
-    "E1": (
-        ("procedure", _text,
-         "what to do, stated so a stranger can do it with their own tools"),
-        ("inputs", _sources,
-         "a list of {url, snapshot_sha256} — the exact bytes you worked from"),
-        ("expected", _expected,
-         "either {\"digest\": sha256:<64 hex>} for an artifact that must match "
-         "exactly, or a band {value, scale, unit, lo, hi} for a number"),
-    ),
-    "E3": (
-        ("partner", _text, "the organisation whose endpoint answers"),
-        ("partner_public_key", _key32, "their base64 ed25519 public key, 44 chars"),
-        ("endpoint", _url, "an https URL that signs what it returns"),
-        ("metric", _text, "the name of the metric being challenged"),
-        ("claimed", _interval, "the value you claim, and the band a fresh challenge "
-                               "must land in"),
-        ("fetched_at", _date, "YYYY-MM-DD or RFC3339 UTC"),
-    ),
     "E4": (
         ("seal_url", _url, "where the seal you are opening is published"),
         ("plan_salt", _hexsalt, "at least 32 hex characters"),
@@ -381,28 +356,6 @@ MANIFEST_RULES = {
         ("threshold", _interval,
          "the band you sealed BEFORE starting; a reproduction lands in it or does not"),
         ("result", _interval, "what you got"),
-    ),
-    "E5": (
-        ("seal_url", _url, "where the sealed prediction is published"),
-        ("plan_salt", _hexsalt, "at least 32 hex characters"),
-        ("prediction", _obj, "the prediction you sealed, revealed in full"),
-        ("resolves_on", _date, "the date the world answers — not before"),
-        ("resolution", _sources,
-         "a list of {url, snapshot_sha256} — where the answer is read, in a system "
-         "neither you nor your verifier controls"),
-        ("outcome", _text, "what happened, in the prediction's own terms"),
-    ),
-    "E7": (
-        ("seal_url", _url, "where the pre-registration is published"),
-        ("plan_salt", _hexsalt, "at least 32 hex characters"),
-        ("plan", _obj, "the analysis plan you sealed, revealed in full"),
-        ("data_sources", _sources,
-         "a list of {url, snapshot_sha256} — every input, pinned"),
-        ("population", _text, "who or what this is an estimate about"),
-        ("estimate", _interval, "the estimate and the band you sealed for it"),
-        ("refuses", _text,
-         "what this estimate does NOT establish, in your own words. A manifest "
-         "with nothing here is overclaiming by omission"),
     ),
     # E2 originally took one source and one digest, which quietly restricted the
     # network to single byte-stable files — overwhelmingly things in git repos.

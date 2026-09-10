@@ -221,7 +221,7 @@ def test_the_homepage_renders_every_evidence_class_and_its_counts(site):
     for c in reg:
         assert c["class_id"] in html
         assert c["name"] in html
-    assert len(reg) >= 7
+    assert len(reg) >= 3
 
 
 def test_the_numbers_section_claims_nothing_it_typed_in(site):

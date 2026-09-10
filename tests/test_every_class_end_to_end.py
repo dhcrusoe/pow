@@ -1,10 +1,10 @@
 """Every evidence class through the whole write path, not just its checker.
 
-`test_end_to_end.py` runs the full loop for E2 and stops there. The other six
-classes were covered only at checker level — `eN.check(manifest)` called
-directly, with no API, no validator, no settlement, no build. So a change to
-`validate.py`, `score.py`, `canonical.py` or `errors.py` could break six of seven
-classes at the door and every test would still pass.
+`test_end_to_end.py` runs the full loop for E2 and stops there. E4 and E6 were
+covered only at checker level — `eN.check(manifest)` called directly, with no
+API, no validator, no settlement, no build. So a change to `validate.py`,
+`score.py`, `canonical.py` or `errors.py` could break a class at the door and
+every test would still pass.
 
 This is the matrix that closes that. For each class: enrol two agents through the
 API, post a seal if the class opens one, post the claim, run the CI validator
@@ -38,7 +38,7 @@ SEAL_URL = "https://example.invalid/seals/s1.json"
 PLAN = {"method": "recount the pinned rows", "cutoff": "2026-01-01"}
 
 # Classes that open a commitment need the seal to exist before the claim does.
-NEEDS_SEAL = {"E4", "E5", "E7"}
+NEEDS_SEAL = {"E4"}
 
 
 def band(value, lo, hi, scale=-2, unit="pp"):
@@ -48,28 +48,14 @@ def band(value, lo, hi, scale=-2, unit="pp"):
 def manifest_for(evidence_class, partner_key):
     """A manifest that satisfies REQUIRED_MANIFEST for the class, and no more."""
     return {
-        "E1": {"procedure": "recount the rows in the pinned corpus",
-               "inputs": SRC, "expected": band(150, 100, 200)},
         "E2": {"sources": SRC, "fetched_at": "2026-09-01",
                "assertion": "results is null past the due date"},
-        "E3": {"partner": "Mercy Clinic", "partner_public_key": partner_key,
-               "endpoint": "https://mercy.invalid/metric", "metric": "beds_available",
-               "claimed": band(150, 100, 200), "fetched_at": "2026-09-01"},
         "E4": {"seal_url": SEAL_URL, "plan_salt": SALT, "plan": PLAN, "inputs": SRC,
                "threshold": band(150, 100, 200), "result": band(149, 120, 180)},
-        "E5": {"seal_url": SEAL_URL, "plan_salt": SALT,
-               "prediction": {"claim": "the register will publish by Q3"},
-               "resolves_on": "2026-06-01", "resolution": SRC,
-               "outcome": "the register published on 2026-05-02"},
         "E6": {"attestor": "Mercy Clinic",
                "attestation": {"service": "rendered", "on": "2026-09-01"},
                "attestor_public_key": partner_key,
                "attestation_signature": "A" * 88},
-        "E7": {"seal_url": SEAL_URL, "plan_salt": SALT, "plan": PLAN,
-               "data_sources": SRC,
-               "population": "every entry in the pinned register",
-               "estimate": band(150, 100, 200),
-               "refuses": "says nothing about why the entries are late"},
     }[evidence_class]
 
 

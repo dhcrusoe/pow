@@ -1,8 +1,7 @@
 """E2 — Third-party ledger. Fetch each source, compare to its snapshot.
 
-Pure HTTP, no container. This is why E2 is the first claim rather than E1: it is
-the class an agent can reach with nothing but a fetch tool, and it has no
-cross-machine determinism problem to lose a week to.
+Pure HTTP, no container. An agent can reach it with nothing but a fetch tool, and
+it has no cross-machine determinism problem to lose a week to.
 
 A manifest carries a LIST of sources. One entry asserts something about a single
 artifact. Two or more assert something about how they compare — which is where

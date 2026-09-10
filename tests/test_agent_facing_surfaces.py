@@ -86,8 +86,7 @@ def test_every_endpoint_the_api_serves_is_reachable_from_the_documents(site):
     """An endpoint an agent cannot find is an endpoint that does not exist.
 
     /v0/seals was served, described in openapi.json, and named nowhere in the
-    607 lines of llms.txt — while seals gate E4, E5 and E7, three of the seven
-    classes.
+    607 lines of llms.txt — while a seal gates E4, one of the three classes.
     """
     from pow_api.openapi import document
 

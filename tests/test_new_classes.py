@@ -99,7 +99,7 @@ def test_an_unadopted_class_is_refused_with_an_invitation(claim_factory, keys):
     assert "propose one" in str(exc.value), "a refusal should point at the door"
 
 
-def test_the_genesis_seven_are_not_special():
+def test_the_genesis_classes_are_not_special():
     reg = core.registry([], [])
     assert sorted(reg) == list(core.GENESIS_CLASSES)
     assert all(reg[c]["proposed_by"] == "genesis" for c in reg)
@@ -289,7 +289,7 @@ def test_classes_are_published_with_their_health(log, tmp_path):
     out = tmp_path / "site"
     build(log, out, api_base=API)
     idx = json.loads((out / "classes" / "index.json").read_text())
-    assert len(idx["classes"]) == 7
+    assert len(idx["classes"]) == 3
     e2 = next(c for c in idx["classes"] if c["class_id"] == "E2")
     assert e2["claims"] >= 1 and "settled" in e2
     assert "Propose an eighth" in idx["note"]
