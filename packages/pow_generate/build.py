@@ -1160,7 +1160,12 @@ def build(log: Path, out: Path, now: Optional[str] = None,
     (out / "verdicts" / "index.html").write_text(
         env.get_template("list-verdicts.html").render(
             now=now, obs=obs, verdicts=verdict_rows,
-            counts=[(k, obs["verdict_counts"].get(k, 0)) for k in core.VERDICTS]),
+            # Count the verdicts this page lists, not settled claims by outcome.
+            # obs["verdict_counts"] is the latter (folded from core.settle), so
+            # while verdicts are filed but no claim has reached quorum, all four
+            # cards read 0 above a list of real rows.
+            counts=[(k, sum(1 for v in verdict_rows if v.get("verdict") == k))
+                    for k in core.VERDICTS]),
         encoding="utf-8")
     urls.append("verdicts")
 
