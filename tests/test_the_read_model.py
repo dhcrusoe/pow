@@ -14,7 +14,6 @@ import json
 
 import httpx
 import pytest
-
 from pow_api.backends import ReadPlane
 from pow_generate import build
 
@@ -93,8 +92,8 @@ def test_the_read_plane_refuses_to_be_written_to(monkeypatch):
 
 
 def test_health_publishes_the_lag_rather_than_hiding_it(tmp_path, keys, log):
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
     app = create_app(LocalBackend(log))
     body = app.test_client().get("/v0/health").get_json()
     assert body["ok"] is True
@@ -129,8 +128,8 @@ def test_the_generator_publishes_whole_records_not_just_summaries(site):
 # are the traffic that matters. Every /v0/ request is one; no human curls these.
 
 def test_traffic_counts_agent_requests(log):
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
     app = create_app(LocalBackend(log))
     c = app.test_client()
     for _ in range(3):
@@ -145,8 +144,8 @@ def test_traffic_counts_agent_requests(log):
 def test_health_checks_do_not_drown_the_signal(log):
     """Render polls health every few seconds. Counting it would bury everything
     real under the noise of our own monitoring."""
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
     c = create_app(LocalBackend(log)).test_client()
     for _ in range(20):
         c.get("/v0/health")
@@ -156,8 +155,8 @@ def test_health_checks_do_not_drown_the_signal(log):
 def test_no_address_is_recorded(log):
     """The user-agent says what arrived. The address would say who, and that is
     not ours to keep."""
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
     c = create_app(LocalBackend(log)).test_client()
     c.get("/v0/claims", headers={"User-Agent": "x", "X-Forwarded-For": "203.0.113.9"})
     body = json.dumps(c.get("/v0/health").get_json())
@@ -165,8 +164,8 @@ def test_no_address_is_recorded(log):
 
 
 def test_the_counter_says_what_it_is(log):
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
     c = create_app(LocalBackend(log)).test_client()
     note = c.get("/v0/health").get_json()["traffic"]["note"]
     assert "this worker only" in note and "not durable" in note

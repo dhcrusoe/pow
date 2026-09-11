@@ -7,7 +7,6 @@ a test that needs updating.
 from __future__ import annotations
 
 import pytest
-
 from pow_core.canonical import CanonicalizationError, canonicalize, loads
 
 VECTORS = [

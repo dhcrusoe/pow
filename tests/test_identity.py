@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import pytest
-
 import pow_core as core
+import pytest
 
 
 def test_sign_and_verify_round_trip():

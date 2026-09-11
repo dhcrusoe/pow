@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 import pow_core as core
+import pytest
 
 
 def blob(rec) -> bytes:

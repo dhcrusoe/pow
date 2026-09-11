@@ -14,7 +14,6 @@ import hashlib
 
 import httpx
 import pytest
-
 from pow_core import seals
 from pow_core.validate import _interval
 from pow_verify import e4

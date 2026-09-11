@@ -9,8 +9,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "packages"), str(ROOT)]
 
-import pow_core as core  # noqa: E402
-from scripts.seed_log import build  # noqa: E402
+import pow_core as core
+
+from scripts.seed_log import build
 
 
 @pytest.fixture(scope="session")

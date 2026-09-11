@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import time
 from collections import deque
-from typing import Deque, Dict, Tuple
 
 # window seconds, permitted writes in that window
 PER_KEY = (3600, 120)
@@ -36,16 +35,16 @@ GLOBAL = (3600, 300)          # GitHub's secondary limit is ~500/hr; stay under 
 class Ceilings:
     def __init__(self, per_key=PER_KEY, per_address=PER_ADDRESS, glob=GLOBAL) -> None:
         self.spec = {"key": per_key, "address": per_address, "global": glob}
-        self.seen: Dict[Tuple[str, str], Deque[float]] = {}
+        self.seen: dict[tuple[str, str], deque[float]] = {}
 
-    def _hits(self, scope: str, who: str, now: float) -> Deque[float]:
+    def _hits(self, scope: str, who: str, now: float) -> deque[float]:
         window = self.spec[scope][0]
         q = self.seen.setdefault((scope, who), deque())
         while q and now - q[0] > window:
             q.popleft()
         return q
 
-    def check(self, key: str, address: str, now: float = None):
+    def check(self, key: str, address: str, now: float | None = None):
         """Return None to proceed, or (scope, retry_after_seconds) to refuse."""
         now = time.monotonic() if now is None else now
         for scope, who in (("key", key or "-"), ("address", address or "-"),
@@ -56,7 +55,7 @@ class Ceilings:
                 return scope, max(1, int(window - (now - q[0])) + 1)
         return None
 
-    def record(self, key: str, address: str, now: float = None) -> None:
+    def record(self, key: str, address: str, now: float | None = None) -> None:
         """Count a write. Only successful writes count: a rejected record cost
         the log nothing, and charging for it would punish an agent for learning
         the schema."""

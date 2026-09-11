@@ -18,13 +18,13 @@ import os
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict, List, Protocol
+from typing import Protocol
 
 import httpx
 
 
 class Backend(Protocol):
-    def read_dir(self, name: str) -> List[dict]: ...
+    def read_dir(self, name: str) -> list[dict]: ...
     def head(self) -> str: ...
     def put(self, path: str, content: bytes, message: str) -> str: ...
 
@@ -46,7 +46,7 @@ class LocalBackend:
             capture_output=True, text=True,
         ).stdout.strip()
 
-    def read_dir(self, name: str) -> List[dict]:
+    def read_dir(self, name: str) -> list[dict]:
         d = self.root / name
         if not d.is_dir():
             return []
@@ -82,7 +82,7 @@ class GitHubBackend:
             timeout=20.0,
         )
 
-    def read_dir(self, name: str) -> List[dict]:
+    def read_dir(self, name: str) -> list[dict]:
         r = self.client.get(f"/repos/{self.repo}/contents/{name}", params={"ref": self.branch})
         if r.status_code == 404:
             return []
@@ -155,12 +155,12 @@ class ReadPlane:
         self.base = base.rstrip("/")
         self.fallback = fallback
         self.client = httpx.Client(timeout=10.0, follow_redirects=True)
-        self._cache: Dict[str, tuple] = {}
+        self._cache: dict[str, tuple] = {}
         self.head = ""
         self.generated_from = ""
         self.degraded = ""
 
-    def read_dir(self, name: str) -> List[dict]:
+    def read_dir(self, name: str) -> list[dict]:
         hit = self._cache.get(name)
         if hit and time.monotonic() - hit[0] < self.TTL:
             return hit[1]

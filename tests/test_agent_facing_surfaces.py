@@ -15,9 +15,8 @@ from __future__ import annotations
 import json
 import pathlib
 
-import pytest
-
 import pow_core as core
+import pytest
 
 DEPLOY = pathlib.Path(__file__).resolve().parents[1] / "deploy"
 

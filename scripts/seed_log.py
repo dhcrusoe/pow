@@ -16,55 +16,55 @@ import pow_core as core
 AGENTS = ["wren", "slate", "chalk", "keel"]
 
 CLAIMS = [
-    dict(claimant="wren", domain=1, path="sealed", evidence_class="E2",
-         proposition="Advisory D lists package P as affected at version V, but the "
+    {"claimant": "wren", "domain": 1, "path": "sealed", "evidence_class": "E2",
+         "proposition": "Advisory D lists package P as affected at version V, but the "
                      "vulnerable function was removed at V.",
-         manifest={"sources": [{"url": "https://example.invalid/advisory-D.json",
+         "manifest": {"sources": [{"url": "https://example.invalid/advisory-D.json",
                               "snapshot_sha256": "a" * 64}],
                    "fetched_at": "2026-08-30",
                    "assertion": "affected_range includes V while the fix landed before V"},
-         why="Anyone checking whether they are exposed gets the wrong answer.",
-         boundary="standing: the advisory database is a public artifact",
-         costs="", valid_as_of="2026-08-30"),
-    dict(claimant="slate", domain=4, path="sealed", evidence_class="E2",
-         proposition="The published answer key for exercise set S disagrees with the "
+         "why": "Anyone checking whether they are exposed gets the wrong answer.",
+         "boundary": "standing: the advisory database is a public artifact",
+         "costs": "", "valid_as_of": "2026-08-30"},
+    {"claimant": "slate", "domain": 4, "path": "sealed", "evidence_class": "E2",
+         "proposition": "The published answer key for exercise set S disagrees with the "
                      "worked solution printed in the same document for 22 items.",
-         manifest={"sources": [{"url": "https://example.invalid/exercises-S.json",
+         "manifest": {"sources": [{"url": "https://example.invalid/exercises-S.json",
                               "snapshot_sha256": "b" * 64}],
                    "fetched_at": "2026-08-31",
                    "assertion": "22 answer cells contradict their own problem statements"},
-         why="A student working alone is told the right answer is wrong.",
-         boundary="the answer key: correctness is re-derived from the mathematics, "
+         "why": "A student working alone is told the right answer is wrong.",
+         "boundary": "the answer key: correctness is re-derived from the mathematics, "
                   "not taken from the key, which is itself the thing in question",
-         costs="", valid_as_of="2026-08-31"),
-    dict(claimant="chalk", domain=3, path="sealed", evidence_class="E2",
-         proposition="Benefit calculator C returns a smaller award than statute S "
+         "costs": "", "valid_as_of": "2026-08-31"},
+    {"claimant": "chalk", "domain": 3, "path": "sealed", "evidence_class": "E2",
+         "proposition": "Benefit calculator C returns a smaller award than statute S "
                      "requires for 4 of the 12 household profiles the agency publishes.",
-         manifest={"sources": [{"url": "https://example.invalid/worked-examples.json",
+         "manifest": {"sources": [{"url": "https://example.invalid/worked-examples.json",
                               "snapshot_sha256": "c" * 64}],
                    "fetched_at": "2026-09-01",
                    "assertion": "4 published worked examples disagree with the statute text"},
-         why="Households are told they qualify for less than the law gives them.",
-         boundary="no subject acts as evidence: every profile is the agency's own "
+         "why": "Households are told they qualify for less than the law gives them.",
+         "boundary": "no subject acts as evidence: every profile is the agency's own "
                   "synthetic example; no real household appears",
-         costs="Points at a snapshot rather than the live calculator, so it says "
+         "costs": "Points at a snapshot rather than the live calculator, so it says "
                "nothing about what the calculator does today.",
-         valid_as_of="2026-09-01"),
+         "valid_as_of": "2026-09-01"},
     # Every seeded claim was sealed, so nothing in the test suite ever built a
     # page for a claim with no evidence_class and no manifest — and the first
     # real open claim took the generator down with a KeyError. The open path is
     # the default and the usual case; the fixture has to look like the network.
-    dict(claimant="keel", domain=4, path="open",
-         proposition="Of the 41 reports published by body B between March and "
+    {"claimant": "keel", "domain": 4, "path": "open",
+         "proposition": "Of the 41 reports published by body B between March and "
                      "August, 12 state a district that the coordinates in the same "
                      "report place outside it.",
-         action="Read every report in the published set, extracted the stated "
+         "action": "Read every report in the published set, extracted the stated "
                 "district and coordinates from each, and resolved the coordinates "
                 "against the published administrative boundaries. Listed every "
                 "disagreement with its report id and both values.",
-         beneficiary="Anyone using the set to decide where it is safe to travel, "
+         "beneficiary": "Anyone using the set to decide where it is safe to travel, "
                      "and the body that publishes it.",
-         evidence=[{"what": "the report set as fetched",
+         "evidence": [{"what": "the report set as fetched",
                     "url": "https://example.invalid/reports-index.json",
                     "sha256": "d" * 64},
                    # Inline: small enough to travel with the claim, so filing it
@@ -72,19 +72,19 @@ CLAIMS = [
                    {"content": "# The 12 disagreements\n\nreport,stated,resolved\n"
                                "R-004,North,South\nR-011,North,East\n",
                     "content_sha256": hashlib.sha256(
-                        ("# The 12 disagreements\n\nreport,stated,resolved\n"
-                         "R-004,North,South\nR-011,North,East\n").encode()).hexdigest()}],
-         how_to_check="Fetch both files and confirm the digests. For each row, open "
+                        b"# The 12 disagreements\n\nreport,stated,resolved\n"
+                         b"R-004,North,South\nR-011,North,East\n").hexdigest()}],
+         "how_to_check": "Fetch both files and confirm the digests. For each row, open "
                       "the named report and point-in-polygon its coordinates against "
                       "the boundary file. You should get 12; if you get another "
                       "number, say which rows you disagree with.",
-         why="People deciding whether it is safe to go home were relying on a "
+         "why": "People deciding whether it is safe to go home were relying on a "
              "figure nobody had checked against its own sources.",
-         boundary="no one at risk becomes evidence: every row names a report and a "
+         "boundary": "no one at risk becomes evidence: every row names a report and a "
                   "district, and no person appears in any of them",
-         costs="Says the published set contradicts itself. Says nothing about "
+         "costs": "Says the published set contradicts itself. Says nothing about "
                "which of the two values is correct.",
-         valid_as_of="2026-09-01"),
+         "valid_as_of": "2026-09-01"},
 ]
 
 BROKEN = {

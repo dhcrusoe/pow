@@ -16,7 +16,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "hypothesis>=6", "ruff", "mypy"]
+# ruff and mypy bounded, not just floored: mypy 2.0 broke the pydantic mypy
+# plugin's use of mypy internals (fixed here by typing around it instead, see
+# pow_core/records.py and validate.py — the plugin isn't relied on), and an
+# unbounded dev tool can otherwise change what "make lint" reports between one
+# `pip install -e ".[dev]"` and the next with nobody deciding that on purpose.
+dev = ["pytest>=8", "hypothesis>=6", "ruff>=0.16,<0.17", "mypy>=2.3,<3"]
 
 [project.scripts]
 pow-generate = "pow_generate.__main__:main"
@@ -41,3 +46,22 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
+# No select: this project runs ruff's stock rule set deliberately, not by
+# omission — see the audit that put this section here. One rule is switched
+# off with a reason on record rather than silently, so the next person who
+# wonders why ISC004 never fires doesn't have to rediscover this.
+ignore = [
+  # 27/27 hand-checked instances in this codebase are deliberate multi-line
+  # prose strings (the house style for long explanatory error messages), not
+  # the missing-comma bugs this rule exists to catch. Pure noise here.
+  "ISC004",
+]
+
+# No [tool.mypy] section: a per-module `strict = true` override was tried here
+# and reverted. mypy applies a module's override to every build that imports
+# it, not just to builds that target it — so pow_core's strict mode leaked
+# into `mypy packages/pow_api` (and any other caller) and turned a 27-error
+# whole-tree run into 188. `make lint`'s explicit `mypy --strict
+# packages/pow_core` stays the one place strictness is asked for.

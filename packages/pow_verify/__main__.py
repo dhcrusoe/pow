@@ -17,7 +17,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
-
 import pow_core as core
 
 from . import e2, e4, e6
@@ -78,9 +77,13 @@ def main(argv=None) -> int:
     if ec in NEEDS_SEAL:
         ref = args.seal or manifest.get("seal_url")
         try:
+            # load_claim fetches over HTTP or reads a local file and parses JSON —
+            # network, filesystem and decode errors are all real here, and this is
+            # a best-effort fetch, not a boundary: any failure just means no seal,
+            # which check_seal reports properly as its own diagnosis.
             extra["seal"] = load_claim(ref) if ref else None
-        except Exception:
-            extra["seal"] = None          # check_seal reports this properly
+        except Exception:  # noqa: BLE001
+            extra["seal"] = None
         extra["claimant"] = claim.get("claimant", "")
 
     verdict, output_hash, diagnosis = check(manifest, **extra)

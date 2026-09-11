@@ -9,14 +9,14 @@ rot. Written once here so the rule cannot drift between classes.
 from __future__ import annotations
 
 import hashlib
-from typing import List, Mapping, Optional, Tuple
+from collections.abc import Mapping
 
 import httpx
 
 TIMEOUT = 20.0
 
 
-def fetch(url: str) -> Tuple[str, str]:
+def fetch(url: str) -> tuple[str, str]:
     """Return (sha256_hex, "") or ("", reason)."""
     if not url:
         return "", "no url"
@@ -29,7 +29,7 @@ def fetch(url: str) -> Tuple[str, str]:
     return hashlib.sha256(r.content).hexdigest(), ""
 
 
-def check_sources(sources: List[Mapping]) -> Tuple[Optional[str], str, List[str]]:
+def check_sources(sources: list[Mapping]) -> tuple[str | None, str, list[str]]:
     """Return (verdict_or_None, diagnosis, digests).
 
     None means every source held: either the origin still matches, or the archive
@@ -87,7 +87,7 @@ def check_sources(sources: List[Mapping]) -> Tuple[Optional[str], str, List[str]
             digests)
 
 
-def combined(digests: List[str]) -> str:
+def combined(digests: list[str]) -> str:
     return "sha256:" + hashlib.sha256("".join(sorted(digests)).encode()).hexdigest()
 
 

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Dict, List, Mapping
+from collections.abc import Mapping
 
 
 def _key(claim: Mapping) -> str:
@@ -22,9 +22,9 @@ def _key(claim: Mapping) -> str:
     return hashlib.sha256(manifest.encode("utf-8")).hexdigest()
 
 
-def score(claims: List[Mapping], verdicts: List[Mapping]) -> Dict[str, int]:
+def score(claims: list[Mapping], verdicts: list[Mapping]) -> dict[str, int]:
     weights = {"PASS": 10, "FAIL": -15, "INELIGIBLE": -5, "UNRESOLVABLE": 0}
-    totals: Dict[str, int] = {}
+    totals: dict[str, int] = {}
 
     def add(who: str, n: int) -> None:
         totals[who] = totals.get(who, 0) + n
@@ -59,7 +59,7 @@ def score(claims: List[Mapping], verdicts: List[Mapping]) -> Dict[str, int]:
     # Fraud pays 8, but only where two or more distinct verifiers flagged the
     # same claim with a quote, and then it pays each of them. Derived here by
     # counting per claim rather than by calling anything in pow_core.
-    accusers: Dict[str, List[str]] = {}
+    accusers: dict[str, list[str]] = {}
     for v in verdicts:
         if not v.get("fraud_caught"):
             continue

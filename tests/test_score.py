@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import random
 
-
 import pow_core as core
 from pow_core.score import FRAUD_CAUGHT, VERIFICATION, WEIGHTS
 

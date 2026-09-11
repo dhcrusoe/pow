@@ -14,16 +14,14 @@ verified.
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timedelta, timezone
 
+import pow_core as core
 from flask import Flask, Response, jsonify, request
 
-import pow_core as core
-
-import os
-
 from .backends import from_env, read_plane_from_env
-from .limits import Ceilings, REASON
+from .limits import REASON, Ceilings
 
 SITE_BASE = os.environ.get("SITE_BASE", "http://localhost:8080").rstrip("/")
 # Distinctive enough that it cannot occur in a real base64 signature.
@@ -193,6 +191,14 @@ def create_app(backend=None) -> Flask:
             return bad(rej)
         except KeyError as exc:
             return bad(core.Rejection("schema", f"missing field {exc}"))
+        except AttributeError:
+            # path_for() runs before the model validates field types, so an id
+            # field sent as the wrong JSON type (a list or object instead of a
+            # string) reaches here as a plain AttributeError rather than a
+            # Rejection. Same shape of answer either way.
+            return bad(core.Rejection(
+                "schema", "one of the id fields (claim_id, seal_id, research_id, "
+                          "verifier, pseudonym) is not a string"))
 
         try:
             sha = app.config["BACKEND"].put(
@@ -675,7 +681,7 @@ def create_app(backend=None) -> Flask:
             out["signature_slot"] = SIGNATURE_SLOT
             out["bytes_to_post_template"] = core.canonicalize(
                 {**filled, "signature": SIGNATURE_SLOT}).decode()
-        except Exception as exc:                      # malformed beyond canonicalising
+        except Exception as exc:  # noqa: BLE001 — malformed beyond canonicalising
             out["note"] = f"could not canonicalise this record: {exc}"
 
         if kind == "claim":
@@ -728,7 +734,8 @@ def create_app(backend=None) -> Flask:
         except core.Rejection as rej:
             out["ok"] = False
             out["error"] = rej.as_dict()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — /v0/check's whole job is to turn
+            # any reason a record would fail into an answer, not a 500
             out["ok"] = False
             out["error"] = {"rule": "schema", "detail": str(exc)}
 

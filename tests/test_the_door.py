@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 import pow_core as core
+import pytest
 from pow_api.backends import LocalBackend
 from pow_api.main import create_app
 from pow_generate.build import build
@@ -118,14 +117,14 @@ def test_hex_signature_is_diagnosed_as_an_encoding_problem():
 
 
 def test_a_wrong_length_signature_says_so():
-    sk, pk = core.generate()
+    _sk, pk = core.generate()
     rec = {"a": 1, "signature": core.identity.b64(b"\x00" * 32)}
     with pytest.raises(core.Rejection, match="32 bytes"):
         core.verify(rec, pk)
 
 
 def test_a_genuine_signing_failure_points_at_the_examples():
-    sk, pk = core.generate()
+    _sk, pk = core.generate()
     other, _ = core.generate()
     rec = {"a": 1}
     rec["signature"] = core.sign(rec, other)
@@ -349,6 +348,7 @@ def test_the_published_signing_recipe_actually_works():
     every agent that trusts the documentation is locked out."""
     import base64
     import json as _json
+
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
     sk = Ed25519PrivateKey.generate()
@@ -457,8 +457,8 @@ def test_the_order_of_operations_is_stated(site):
 # named a file on its author's own disk and can never be removed.
 
 def test_check_answers_before_you_have_signed_or_hashed_anything(tmp_path, keys, log):
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
     c = create_app(LocalBackend(log)).test_client()
     rec = {"claimant": "wren", "domain": 1, "path": "open",
            "proposition": "A published set contradicts itself in twelve places.",
@@ -477,8 +477,8 @@ def test_check_answers_before_you_have_signed_or_hashed_anything(tmp_path, keys,
 
 
 def test_check_writes_nothing(tmp_path, keys, log):
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
     before = sorted(p.name for p in (log / "claims").glob("*.json"))
     c = create_app(LocalBackend(log)).test_client()
     c.post("/v0/check?kind=claim", data=json.dumps({"claimant": "wren", "domain": 1}),
@@ -489,8 +489,8 @@ def test_check_writes_nothing(tmp_path, keys, log):
 def test_check_reports_every_reason_not_just_the_first_it_can_reach(tmp_path, keys, log):
     """A missing claim_id must not mask the problems behind it: you are meant to
     be able to ask this before you have computed one."""
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
     c = create_app(LocalBackend(log)).test_client()
     rec = {"claimant": "wren", "domain": 1, "path": "open",
            "proposition": "A summary was synthesized and published for checking.",
@@ -506,8 +506,8 @@ def test_check_reports_every_reason_not_just_the_first_it_can_reach(tmp_path, ke
 
 
 def test_check_infers_the_kind_when_you_do_not_say(tmp_path, keys, log):
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
     c = create_app(LocalBackend(log)).test_client()
     body = c.post("/v0/check", data=json.dumps(
         {"pseudonym": "newcomer", "public_key": "A" * 43 + "=",
@@ -624,9 +624,10 @@ def test_a_client_can_file_with_no_canonicaliser_of_its_own(tmp_path, keys, log)
     """The whole basis of the browser signer: sign the bytes handed back, put the
     signature in the slot, post. No JCS implementation anywhere on the client."""
     import base64
+
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
 
     c = create_app(LocalBackend(log)).test_client()
     sk = Ed25519PrivateKey.generate()
@@ -651,8 +652,8 @@ def test_a_client_can_file_with_no_canonicaliser_of_its_own(tmp_path, keys, log)
 def test_bytes_to_sign_covers_the_record_that_will_exist(tmp_path, keys, log):
     """Signing excludes only 'signature', so claim_id has to be in the record
     already — otherwise the signature covers a record nobody will ever post."""
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
     c = create_app(LocalBackend(log)).test_client()
     d = c.post("/v0/check?kind=claim", data=json.dumps(
         {"claimant": "wren", "domain": 1, "path": "open",
@@ -669,8 +670,8 @@ def test_bytes_to_sign_covers_the_record_that_will_exist(tmp_path, keys, log):
 def test_a_write_says_where_it_came_from(tmp_path, keys, log):
     """Three surfaces are about to exist; without this an enrolment arrives with
     no way to tell which one produced it."""
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
     c = create_app(LocalBackend(log)).test_client()
     c.get("/v0/claims?via=signer")
     c.get("/v0/claims?via=mcp")
@@ -694,8 +695,8 @@ def test_the_api_permits_the_browser_that_signs(tmp_path, keys, log):
     origin. Without these headers a browser blocks it and the page is decoration.
     Wildcard is safe here: there is no cookie or session to steal, and authority
     is a signature over the body no third-party page can produce."""
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
     c = create_app(LocalBackend(log)).test_client()
     for r in (c.get("/v0/claims"),
               c.open("/v0/check", method="OPTIONS"),
@@ -713,6 +714,7 @@ def test_the_spec_has_no_reference_a_client_cannot_resolve(tmp_path, keys, log):
     OpenAPI clients do not fetch, so tool importers dropped the request bodies
     or refused the document. A contract nobody can load is not a contract."""
     import re
+
     from pow_api.openapi import document
     raw = json.dumps(document("https://site.invalid", "https://api.invalid"))
     external = [r for r in re.findall(r'"\$ref": "([^"]+)"', raw) if r.startswith("http")]
@@ -721,6 +723,7 @@ def test_the_spec_has_no_reference_a_client_cannot_resolve(tmp_path, keys, log):
 
 def test_every_internal_reference_resolves(tmp_path, keys, log):
     import re
+
     from pow_api.openapi import document
     d = document("https://site.invalid", "https://api.invalid")
     wanted = set(re.findall(r'"#/components/schemas/([^"]+)"', json.dumps(d)))

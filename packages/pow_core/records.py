@@ -10,7 +10,7 @@ bytes first and only then builds a model from them.
 """
 from __future__ import annotations
 
-from typing import Any, ClassVar, Dict, List, Literal, Optional, Tuple
+from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -32,7 +32,7 @@ VERDICTS = ("PASS", "FAIL", "INELIGIBLE", "UNRESOLVABLE")
 # the moment one path pays better than the other, somebody has to decide the
 # exchange rate — and whoever sets that rate steers the network.
 PATHS = ("sealed", "open")
-DEFAULT_PATH = "open"
+DEFAULT_PATH: Literal["sealed", "open"] = "open"
 DEFAULT_QUORUM = {"sealed": 1, "open": 3}
 # The three the network keeps. Genesis had seven; E1, E3, E5 and E7 were cut
 # because none had ever been filed and each was either redundant (E3 is E6 with a
@@ -69,6 +69,7 @@ BOUNDARIES = {
 
 class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=False)
+    ID_EXCLUDES: ClassVar[tuple[str, ...]] = ()
 
 
 class Claim(Strict):
@@ -107,14 +108,14 @@ class Claim(Strict):
     # Not a Literal. The set of classes lives in the log, so a class adopted after
     # this code was written is as valid as one that shipped with it — which is the
     # whole point of the standing invitation.
-    evidence_class: Optional[str] = None
-    proposes_class: Optional[ClassSpec] = None
+    evidence_class: str | None = None
+    proposes_class: ClassSpec | None = None
     deprecates_class: str = ""  # class_id this claim shows admits garbage
     proposition: str = Field(min_length=12, max_length=400)
     why: str = Field(default="", max_length=300)
 
     # Sealed path: what a verifier needs and nothing more.
-    manifest: Dict[str, Any] = Field(default_factory=dict)
+    manifest: dict[str, Any] = Field(default_factory=dict)
 
     # Open path: what was done, for whom, and what exists to check it. `evidence`
     # is a free list because nobody can anticipate what an agent will hold — a
@@ -123,12 +124,12 @@ class Claim(Strict):
     # who finds a better way should use it and say so.
     # Nine defects do not fit in one sentence. A claimant can now decompose its
     # own finding instead of leaving that to whoever verifies it.
-    assertions: List[Dict[str, Any]] = Field(default_factory=list)
+    assertions: list[dict[str, Any]] = Field(default_factory=list)
     addresses: str = ""  # research_id of a published need this claim answers
 
     action: str = Field(default="", max_length=1200)
     beneficiary: str = Field(default="", max_length=300)
-    evidence: List[Dict[str, Any]] = Field(default_factory=list)
+    evidence: list[dict[str, Any]] = Field(default_factory=list)
     how_to_check: str = Field(default="", max_length=1200)
 
     boundary: str = Field(min_length=3, max_length=400)
@@ -138,7 +139,7 @@ class Claim(Strict):
     submitted_at: str
     signature: str = ""
 
-    ID_EXCLUDES: ClassVar[Tuple[str, ...]] = ("claim_id", "signature")
+    ID_EXCLUDES: ClassVar[tuple[str, ...]] = ("claim_id", "signature")
 
 
 class Verdict(Strict):
@@ -159,13 +160,13 @@ class Verdict(Strict):
     claim_id: str
     verifier: str
     verdict: Literal["PASS", "FAIL", "INELIGIBLE", "UNRESOLVABLE"]
-    confidence: Optional[int] = Field(default=None, ge=0, le=100)
+    confidence: int | None = Field(default=None, ge=0, le=100)
     method: str = Field(default="", max_length=2000)
-    assertions: List[Dict[str, Any]] = Field(default_factory=list)
+    assertions: list[dict[str, Any]] = Field(default_factory=list)
     would_raise_confidence: str = Field(default="", max_length=600)
     output_hash: str = ""
     diagnosis: str = Field(default="", max_length=2000)
-    magnitude: Optional[str] = None
+    magnitude: str | None = None
     fraud_caught: bool = False
     # The text being reported, copied from the claim. Checked against the record
     # rather than taken on faith: an accusation is an assertion about something a
@@ -174,7 +175,7 @@ class Verdict(Strict):
     settled_at: str
     signature: str = ""
 
-    ID_EXCLUDES: ClassVar[Tuple[str, ...]] = ("signature",)
+    ID_EXCLUDES: ClassVar[tuple[str, ...]] = ("signature",)
 
 
 class ClassSpec(Strict):
@@ -194,10 +195,10 @@ class ClassSpec(Strict):
     name: str = Field(min_length=3, max_length=80)
     verifier_does: str = Field(min_length=12, max_length=400)
     unlocks: str = Field(default="", max_length=400)
-    manifest_fields: List[Dict[str, Any]] = Field(default_factory=list)
+    manifest_fields: list[dict[str, Any]] = Field(default_factory=list)
     falsifies: str = Field(min_length=12, max_length=600)
     reference_verifier: str = Field(default="", max_length=200_000)
-    negative_corpus: List[Dict[str, Any]] = Field(default_factory=list)
+    negative_corpus: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class EvidenceClass(Strict):
@@ -205,7 +206,7 @@ class EvidenceClass(Strict):
     hand: the generator folds them out of the log, and validation reads them."""
     class_id: str
     slug: str
-    spec: Dict[str, Any]
+    spec: dict[str, Any]
     proposed_by: str
     adopted_by_claim: str
     adopted_at: str
@@ -234,14 +235,14 @@ class Research(Strict):
     domain: Literal[1, 2, 3, 4, 5, 6]
     audience: str = Field(min_length=8, max_length=300)
     question: str = Field(min_length=12, max_length=400)
-    findings: List[Dict[str, Any]] = Field(default_factory=list)
-    rejected: List[Dict[str, Any]] = Field(default_factory=list)
-    sources: List[Dict[str, Any]] = Field(default_factory=list)
+    findings: list[dict[str, Any]] = Field(default_factory=list)
+    rejected: list[dict[str, Any]] = Field(default_factory=list)
+    sources: list[dict[str, Any]] = Field(default_factory=list)
     conclusion: str = Field(default="", max_length=2000)
     published_at: str
     signature: str = ""
 
-    ID_EXCLUDES: ClassVar[Tuple[str, ...]] = ("research_id", "signature")
+    ID_EXCLUDES: ClassVar[tuple[str, ...]] = ("research_id", "signature")
 
 
 class Seal(Strict):
@@ -252,7 +253,7 @@ class Seal(Strict):
     sealed_at: str
     signature: str = ""
 
-    ID_EXCLUDES: ClassVar[Tuple[str, ...]] = ("seal_id", "signature")
+    ID_EXCLUDES: ClassVar[tuple[str, ...]] = ("seal_id", "signature")
 
 
 class Handout(Strict):
@@ -269,10 +270,10 @@ class Enrollment(Strict):
     enrolled_at: str
     signature: str = ""
 
-    ID_EXCLUDES: ClassVar[Tuple[str, ...]] = ("signature",)
+    ID_EXCLUDES: ClassVar[tuple[str, ...]] = ("signature",)
 
 
-def json_schemas() -> Dict[str, dict]:
+def json_schemas() -> dict[str, dict]:
     return {
         "claim": Claim.model_json_schema(),
         "research": Research.model_json_schema(),
@@ -286,8 +287,21 @@ def json_schemas() -> Dict[str, dict]:
 
 
 __all__ = [
-    "Claim", "Verdict", "Research", "Seal", "Handout", "Enrollment",
-    "ClassSpec", "EvidenceClass", "GENESIS_CLASSES", "FIELD_TYPES",
-    "VERDICTS", "EVIDENCE_CLASSES", "DOMAINS", "BOUNDARIES", "PATHS",
-    "DEFAULT_QUORUM", "json_schemas",
+    "BOUNDARIES",
+    "DEFAULT_QUORUM",
+    "DOMAINS",
+    "EVIDENCE_CLASSES",
+    "FIELD_TYPES",
+    "GENESIS_CLASSES",
+    "PATHS",
+    "VERDICTS",
+    "Claim",
+    "ClassSpec",
+    "Enrollment",
+    "EvidenceClass",
+    "Handout",
+    "Research",
+    "Seal",
+    "Verdict",
+    "json_schemas",
 ]

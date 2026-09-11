@@ -11,6 +11,7 @@ import json
 import random
 
 import pow_core as core
+
 from tests.independent_score import score as independent
 
 
