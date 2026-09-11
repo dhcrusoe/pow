@@ -1,0 +1,51 @@
+# Runs what `make check` runs, on every push and PR. Nothing else in this
+# repository enforces the suite, ruff, the validator, or the negative corpus —
+# before this workflow existed, none of those four ran anywhere except a
+# developer's own machine, and a regression in any of them had nothing
+# stopping it from merging.
+#
+# mypy --strict on pow_core is reported but does not block merges: it is
+# carrying a pre-existing backlog of ~79 findings (almost all missing generic
+# type parameters — annotation completeness, not bugs) that nobody has signed
+# up to clear. Making it required now would make this workflow red from its
+# first run, which trains reviewers to ignore it — see the ruff history this
+# repo already has one of. Promote it to required once that backlog is gone.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Seed a local log (plus the negative corpus)
+        run: make log
+
+      - name: Test
+        run: make test
+
+      - name: Lint (ruff)
+        run: ruff check packages tests scripts
+
+      - name: Validate the seeded log
+        run: make validate
+
+      - name: Negative corpus (every record built to fail must be rejected)
+        run: make negative
+
+      - name: Type-check pow_core (strict, advisory)
+        run: mypy --strict packages/pow_core
+        continue-on-error: true
