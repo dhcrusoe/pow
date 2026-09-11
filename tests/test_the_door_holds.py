@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 import pow_core as core
+import pytest
 from pow_api.limits import Ceilings
 
 
@@ -46,14 +45,14 @@ def test_a_refusal_says_when_to_come_back():
     """An agent told only 'no' retries immediately."""
     c = Ceilings(per_key=(60, 1), per_address=(60, 9), glob=(60, 9))
     c.record("a", "1.1.1.1")
-    scope, retry = c.check("a", "1.1.1.1")
+    _scope, retry = c.check("a", "1.1.1.1")
     assert 0 < retry <= 61
 
 
 def test_a_rejected_record_is_not_charged(tmp_path, keys, log):
     """Charging for a rejected record punishes an agent for learning the schema."""
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
     app = create_app(LocalBackend(log))
     app.config["CEILINGS"] = Ceilings(per_key=(3600, 1), per_address=(3600, 1),
                                       glob=(3600, 1))
@@ -67,8 +66,8 @@ def test_a_rejected_record_is_not_charged(tmp_path, keys, log):
 def test_the_body_is_capped_before_it_is_read(tmp_path, keys, log):
     """request.get_data() reads the whole body into memory, so an uncapped POST
     is a denial of service on a small box."""
-    from pow_api.main import create_app
     from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
     app = create_app(LocalBackend(log))
     assert app.config["MAX_CONTENT_LENGTH"] == 1048576
     r = app.test_client().post("/v0/agents", data=b"x" * 2_000_000,

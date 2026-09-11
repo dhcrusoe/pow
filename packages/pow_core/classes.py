@@ -17,7 +17,7 @@ implementations reading the same log produce the same registry.
 from __future__ import annotations
 
 import re
-from typing import Dict, Iterable, List, Mapping
+from collections.abc import Iterable, Mapping
 
 from .validate import MANIFEST_RULES
 
@@ -58,7 +58,7 @@ def _next_id(taken: Iterable[str]) -> str:
     return f"E{max(used | {GENESIS_HIGH}) + 1}"
 
 
-def _published_fields(cid: str) -> List[dict]:
+def _published_fields(cid: str) -> list[dict]:
     """Genesis manifest_fields, in the {name, required, why} shape a proposed
     class already publishes via proposes_class — so /v0/classes has one source
     instead of a stale prose copy in llms.txt.
@@ -83,13 +83,13 @@ def _published_fields(cid: str) -> List[dict]:
 def registry(
     claims: Iterable[Mapping],
     settlements: Iterable[Mapping],
-) -> Dict[str, dict]:
+) -> dict[str, dict]:
     """Fold the log into the adopted classes. Pure, deterministic, order-free."""
     settled = {
         e["claim_id"]: e for e in settlements
         if e.get("verdict") == "PASS"
     }
-    out: Dict[str, dict] = {}
+    out: dict[str, dict] = {}
     for cid, (name, does, unlocks) in GENESIS_SPECS.items():
         out[cid] = {
             "class_id": cid, "slug": name.lower().replace(" ", "-"),
@@ -109,7 +109,7 @@ def registry(
     proposals.sort(key=lambda c: (settled[c["claim_id"]].get("settled_at", ""),
                                   c["claim_id"]))
 
-    by_slug: Dict[str, str] = {}
+    by_slug: dict[str, str] = {}
     for c in proposals:
         spec = c["proposes_class"]
         slug = str(spec.get("slug", "")).lower()
@@ -137,5 +137,5 @@ def registry(
     return out
 
 
-def usable(reg: Mapping) -> List[str]:
+def usable(reg: Mapping) -> list[str]:
     return sorted(k for k, v in reg.items() if not v.get("deprecated_by_claim"))

@@ -32,14 +32,13 @@ costs that agent 15 points for a packaging defect.
 from __future__ import annotations
 
 import hashlib
-from typing import List, Tuple
 
 import httpx
 
 TIMEOUT = 20.0
 
 
-def _normalise(manifest: dict) -> List[dict]:
+def _normalise(manifest: dict) -> list[dict]:
     """Accept the list form; tolerate the single-source form for old records."""
     if isinstance(manifest.get("sources"), list):
         return manifest["sources"]
@@ -48,7 +47,7 @@ def _normalise(manifest: dict) -> List[dict]:
     return []
 
 
-def _fetch(url: str) -> Tuple[str, str]:
+def _fetch(url: str) -> tuple[str, str]:
     """Return (sha256_hex, "") or ("", reason)."""
     try:
         r = httpx.get(url, timeout=TIMEOUT, follow_redirects=True)
@@ -59,7 +58,7 @@ def _fetch(url: str) -> Tuple[str, str]:
     return hashlib.sha256(r.content).hexdigest(), ""
 
 
-def check(manifest: dict) -> Tuple[str, str, str]:
+def check(manifest: dict) -> tuple[str, str, str]:
     """Return (verdict, output_hash, diagnosis)."""
     sources = _normalise(manifest)
     if not sources:

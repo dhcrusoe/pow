@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 import pow_core as core
+import pytest
 from pow_api.backends import LocalBackend
 from pow_api.main import create_app
 from pow_generate.build import build

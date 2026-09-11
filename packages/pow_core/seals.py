@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from typing import Mapping, Optional, Tuple
+from collections.abc import Mapping
 
 from .canonical import canonicalize
 
@@ -48,8 +48,8 @@ def opens(plan: Mapping, salt: str, sealed: str) -> bool:
         return False
 
 
-def check_seal(manifest: Mapping, seal: Optional[Mapping],
-               claimant: str = "", intended_class: str = "") -> Tuple[str, str]:
+def check_seal(manifest: Mapping, seal: Mapping | None,
+               claimant: str = "", intended_class: str = "") -> tuple[str, str]:
     """Return ("", "") when the seal holds, or (verdict, diagnosis) when it does not.
 
     UNRESOLVABLE where the seal could not be read: an unreachable log says nothing

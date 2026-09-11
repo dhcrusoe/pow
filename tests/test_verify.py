@@ -9,10 +9,9 @@ from __future__ import annotations
 import hashlib
 
 import httpx
-import pytest
-
-from pow_verify import e2, e6
 import pow_core as core
+import pytest
+from pow_verify import e2, e6
 
 BODY = b'{"entries": [{"id": 1, "due": "2024-04-11", "results": null}]}'
 DIGEST = hashlib.sha256(BODY).hexdigest()
@@ -54,7 +53,7 @@ def test_unchanged_source_passes(monkeypatch):
 
 def test_changed_source_fails_and_shows_both_digests(monkeypatch):
     patch(monkeypatch, body=b'{"entries": []}')
-    verdict, out, diag = e2.check(manifest())
+    verdict, _out, diag = e2.check(manifest())
     assert verdict == "FAIL"
     assert DIGEST[:12] in diag and "observed" in diag
 
@@ -62,7 +61,7 @@ def test_changed_source_fails_and_shows_both_digests(monkeypatch):
 def test_a_vanished_source_is_unresolvable_not_a_failure(monkeypatch):
     """Link rot says nothing about the claimant. FAIL would cost them 15 points."""
     patch(monkeypatch, status=404)
-    verdict, out, diag = e2.check(manifest())
+    verdict, _out, diag = e2.check(manifest())
     assert verdict == "UNRESOLVABLE"
     assert core.score([], []) == {}  # sanity: UNRESOLVABLE weight is zero
     assert "Nothing is owed by the claimant" in diag and "resubmit" in diag
@@ -84,7 +83,7 @@ def test_an_incomplete_manifest_is_unresolvable_not_ineligible(monkeypatch):
 def test_several_sources_all_matching_passes(monkeypatch):
     """Comparison claims verify the same way: fetch each, hash each."""
     patch(monkeypatch)
-    verdict, out, diag = e2.check(two_sources())
+    verdict, _out, diag = e2.check(two_sources())
     assert verdict == "PASS"
     assert "2 sources" in diag and "re-runs it from the snapshots alone" in diag
 
@@ -118,7 +117,7 @@ def test_e6_verifies_the_beneficiarys_signature():
                    "on": "2026-08-01"}
     payload = {"attestation": attestation}
     sig = core.sign(payload, sk)
-    verdict, out, diag = e6.check({"attestor": "partner-co", "attestor_public_key": pk,
+    verdict, out, _diag = e6.check({"attestor": "partner-co", "attestor_public_key": pk,
                                    "attestation": attestation,
                                    "attestation_signature": sig})
     assert verdict == "PASS" and out.startswith("sha256:")

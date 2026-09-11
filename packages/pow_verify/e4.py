@@ -11,16 +11,16 @@ the verifier's work. That is the bargain the claimant made when they sealed it.
 """
 from __future__ import annotations
 
-from typing import Mapping, Optional, Tuple
+from collections.abc import Mapping
 
 from pow_core import seals
 
 from . import pinned
 
 
-def check(manifest: Mapping, observed: Optional[Mapping] = None,
-          seal: Optional[Mapping] = None, claimant: str = "",
-          **_) -> Tuple[str, str, str]:
+def check(manifest: Mapping, observed: Mapping | None = None,
+          seal: Mapping | None = None, claimant: str = "",
+          **_) -> tuple[str, str, str]:
     bad, why = seals.check_seal(manifest, seal, claimant, "E4")
     if bad:
         return (bad, "", why)

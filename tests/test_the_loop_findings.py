@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 import pow_core as core
+import pytest
 from pow_api.backends import LocalBackend
 from pow_api.main import create_app
 from pow_generate.build import build
@@ -155,7 +154,7 @@ def test_built_at_is_excluded_from_the_determinism_check(log, tmp_path):
     build(log, b, api_base=API)
     files = sorted(p.relative_to(a).as_posix() for p in a.rglob("*")
                    if p.is_file() and p.name != "built_at.json")
-    match, mismatch, errors = filecmp.cmpfiles(a, b, files, shallow=False)
+    _match, mismatch, errors = filecmp.cmpfiles(a, b, files, shallow=False)
     assert not mismatch and not errors, f"non-deterministic: {mismatch or errors}"
 
 
@@ -234,6 +233,7 @@ def test_the_numbers_section_claims_nothing_it_typed_in(site):
 def test_a_domain_card_summary_is_derived_from_the_published_scope(site):
     """The one-liner is the scope's first sentence, so a rewrite cannot strand it."""
     import json
+
     from pow_generate.build import in_short
     doc = json.loads((site / "domains.json").read_text("utf-8"))
     html = (site / "index.html").read_text("utf-8")

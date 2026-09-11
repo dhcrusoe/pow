@@ -11,11 +11,11 @@ whole decomposability claim, and it is property-tested rather than asserted.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from typing import Dict, Iterable, List, Mapping, Set, Tuple
+from collections.abc import Iterable, Mapping
 
 from .records import DEFAULT_PATH, DEFAULT_QUORUM
 
-WEIGHTS: Dict[str, int] = {
+WEIGHTS: dict[str, int] = {
     "PASS": 10,
     "FAIL": -15,
     "INELIGIBLE": -5,
@@ -38,15 +38,16 @@ FRAUD_CONFIRMATIONS = 2
 # implementation can reproduce without judgement.
 
 
-def _manifest_key(claim: Mapping) -> Tuple[str, str]:
+def _manifest_key(claim: Mapping) -> tuple[str, str]:
     """What makes two claims 'the same artifact' for the collapse rule.
 
     Sealed claims collapse on the manifest. Open claims have no manifest, so they
     collapse on the action and the evidence offered — which is the closest a
     second implementation can get to the same answer without judgement.
     """
-    from .canonical import canonicalize
     import hashlib
+
+    from .canonical import canonicalize
 
     if (claim.get("path") or DEFAULT_PATH) == "open":
         body = {"action": claim.get("action", ""),
@@ -72,7 +73,7 @@ def quorum_for(claim: Mapping) -> int:
 def settle(
     claims: Iterable[Mapping],
     verdicts: Iterable[Mapping],
-) -> List[dict]:
+) -> list[dict]:
     """Return one settlement event per settled claim, in claim_id order.
 
     Sealed: the first verdict settles it. Open: the claim settles once quorum is
@@ -84,11 +85,11 @@ def settle(
     difference. Score reads only `verdict`; everything else here is for the
     record and the observatory.
     """
-    by_claim: Dict[str, List[Mapping]] = defaultdict(list)
+    by_claim: dict[str, list[Mapping]] = defaultdict(list)
     for v in verdicts:
         by_claim[v.get("claim_id", "")].append(v)
 
-    events: List[dict] = []
+    events: list[dict] = []
     for claim in sorted(claims, key=lambda c: c.get("claim_id", "")):
         cid = claim.get("claim_id", "")
         vs = sorted(
@@ -140,14 +141,14 @@ def settle(
     return events
 
 
-def _fraud_flaggers(verdicts: Iterable[Mapping]) -> Dict[str, Set[str]]:
+def _fraud_flaggers(verdicts: Iterable[Mapping]) -> dict[str, set[str]]:
     """Per claim, the distinct verifiers who flagged fraud on it.
 
     Distinct, so one agent filing the same accusation twice is one accusation.
     A flag with no quote is not counted: the door refuses those, and a log
     written before that rule should not pay for them retroactively.
     """
-    out: Dict[str, Set[str]] = defaultdict(set)
+    out: dict[str, set[str]] = defaultdict(set)
     for v in verdicts:
         who = v.get("verifier", "")
         if who and v.get("fraud_caught") and str(v.get("fraud_quote", "")).strip():
@@ -158,11 +159,11 @@ def _fraud_flaggers(verdicts: Iterable[Mapping]) -> Dict[str, Set[str]]:
 def score(
     claims: Iterable[Mapping],
     verdicts: Iterable[Mapping],
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """Total score per pseudonym. Pure, order-independent, integer."""
     claims = list(claims)
     verdicts = list(verdicts)
-    totals: Dict[str, int] = defaultdict(int)
+    totals: dict[str, int] = defaultdict(int)
 
     # Claimant side: first verdict settles, duplicate manifests collapse to one.
     counted: set = set()
@@ -201,14 +202,14 @@ def score(
     return dict(sorted(totals.items()))
 
 
-def breakdown(claims: Iterable[Mapping], verdicts: Iterable[Mapping]) -> Dict[str, dict]:
+def breakdown(claims: Iterable[Mapping], verdicts: Iterable[Mapping]) -> dict[str, dict]:
     """Per-agent detail. Every number here traces to a record; nothing is stored."""
     claims = list(claims)
     verdicts = list(verdicts)
     events = settle(claims, verdicts)
     settled_by_claim = {e["claim_id"]: e for e in events}
 
-    out: Dict[str, dict] = {}
+    out: dict[str, dict] = {}
 
     def row(name: str) -> dict:
         return out.setdefault(name, {

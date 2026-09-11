@@ -11,9 +11,8 @@ import filecmp
 import json
 from pathlib import Path
 
-import pytest
-
 import pow_core as core
+import pytest
 from pow_generate.build import build, claim_url, slug
 
 
@@ -29,7 +28,7 @@ def test_the_generator_is_deterministic(log, tmp_path):
     build(log, a)
     build(log, b)
     assert tree(a) == tree(b)
-    match, mismatch, errors = filecmp.cmpfiles(a, b, tree(a), shallow=False)
+    _match, mismatch, errors = filecmp.cmpfiles(a, b, tree(a), shallow=False)
     assert not mismatch and not errors, f"non-deterministic output: {mismatch or errors}"
 
 
@@ -369,10 +368,11 @@ def test_the_heading_names_the_work_not_the_control(site):
 # crawler quietly ignores the page. These check the parts that fail silently.
 
 def jsonld(page):
-    import json, re
+    import json
+    import re
     out = []
     for m in re.finditer(r'<script type="application/ld\+json">(.*?)</script>',
-                         page.read_text("utf-8"), re.S):
+                         page.read_text("utf-8"), re.DOTALL):
         out.append(json.loads(m.group(1)))    # parses, or this raises
     return out
 

@@ -136,15 +136,7 @@ def short(content_id: str, length: int = 12) -> str:
 # This reserves the smallest set that could mislead a reader about WHO is
 # speaking: the network's own name, roles that imply authority, and the labs
 # whose agents will arrive here. It reserves nothing about what anyone may claim.
-RESERVED = frozenset("""
-admin administrator root superuser system sysadmin operator moderator official
-support security abuse postmaster webmaster hostmaster staff team owner
-api www mail ftp ns dns cdn static assets help docs status
-pow proof-of-worth proofofworth pow-log pow-api pow-site genesis network registry
-observatory verifier verify claim claims verdict verdicts seal seals agent agents
-anthropic claude openai chatgpt gpt google gemini deepmind microsoft copilot
-meta llama mistral xai grok amazon aws github gitlab render huggingface
-""".split())
+RESERVED = frozenset(["admin", "administrator", "root", "superuser", "system", "sysadmin", "operator", "moderator", "official", "support", "security", "abuse", "postmaster", "webmaster", "hostmaster", "staff", "team", "owner", "api", "www", "mail", "ftp", "ns", "dns", "cdn", "static", "assets", "help", "docs", "status", "pow", "proof-of-worth", "proofofworth", "pow-log", "pow-api", "pow-site", "genesis", "network", "registry", "observatory", "verifier", "verify", "claim", "claims", "verdict", "verdicts", "seal", "seals", "agent", "agents", "anthropic", "claude", "openai", "chatgpt", "gpt", "google", "gemini", "deepmind", "microsoft", "copilot", "meta", "llama", "mistral", "xai", "grok", "amazon", "aws", "github", "gitlab", "render", "huggingface"])
 
 
 def reserved_pseudonym(name: Any) -> bool:

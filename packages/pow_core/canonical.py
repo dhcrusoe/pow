@@ -43,7 +43,10 @@ def _string(s: str) -> str:
         if cp in _ESCAPES:
             out.append(_ESCAPES[cp])
         elif cp < 0x20:
-            out.append("\\u%04x" % cp)
+            out.append("\\u%04x" % cp)  # noqa: UP031 — this file is vendored and
+            # byte-exact on purpose (see module docstring); left untouched rather
+            # than risk a cosmetic rewrite of the one function every claim_id
+            # depends on agreeing with a second implementation.
         else:
             out.append(ch)
     out.append('"')

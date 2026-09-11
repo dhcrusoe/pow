@@ -21,13 +21,13 @@ from __future__ import annotations
 import hashlib
 import json
 
-import pytest
-
 import pow_core as core
+import pytest
 from pow_api.backends import LocalBackend
 from pow_api.main import create_app
 from pow_generate.build import build
 from pow_verify.__main__ import CHECKS
+
 from scripts.validate_log import main as validate_log
 
 BODY = b'{"rows": 4}'
@@ -169,7 +169,7 @@ def test_every_class_refuses_a_manifest_missing_a_required_field(evidence_class,
     """
     from pow_core.validate import REQUIRED_MANIFEST
 
-    client, backend, _ = door
+    client, _backend, _ = door
     wren_sk, _ = enrol(client, "wren")
     _, partner_key = core.generate()
     full = manifest_for(evidence_class, partner_key)

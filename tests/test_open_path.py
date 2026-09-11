@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 import pow_core as core
+import pytest
 from pow_generate import build
 
 
@@ -430,7 +429,8 @@ def test_base64_content_is_accepted(open_claim, keys):
 def test_content_sha256_still_covers_the_stored_string(open_claim, keys):
     """Unchanged on purpose: the encoding says how to READ the bytes, not how to
     hash them, so every record written before this field keeps verifying."""
-    import base64, hashlib
+    import base64
+    import hashlib
     payload = base64.b64encode(b"../../etc/passwd").decode()
     check(*_ev(open_claim, keys, content=payload, content_encoding="base64",
                content_sha256=hashlib.sha256(payload.encode()).hexdigest()))

@@ -7,7 +7,7 @@ generator would have said so.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict
+from typing import Any
 
 CANONICAL = (
     "Records are serialized with RFC 8785 JCS: object keys sorted by UTF-16 code "
@@ -19,7 +19,7 @@ CANONICAL = (
 )
 
 
-def _schemas() -> Dict[str, Any]:
+def _schemas() -> dict[str, Any]:
     """The record schemas, inlined under components."""
     from pow_core import json_schemas
     out = {}
@@ -33,7 +33,7 @@ def _schemas() -> Dict[str, Any]:
     return out
 
 
-def _record(name: str, site: str) -> Dict[str, Any]:
+def _record(name: str, site: str) -> dict[str, Any]:
     """A request body, with the schema referenced INTERNALLY.
 
     These used to point at absolute urls — https://…/schema/claim.json — which
@@ -55,7 +55,7 @@ def _record(name: str, site: str) -> Dict[str, Any]:
     }
 
 
-def _errors() -> Dict[str, Any]:
+def _errors() -> dict[str, Any]:
     return {
         "400": {"description": "Rejected. `rule` is one of schema, canonical, "
                                "content_hash, signature, path; `detail` says what to fix.",
@@ -181,7 +181,7 @@ READS = {
 }
 
 
-def document(site: str, api_base: str = "/") -> Dict[str, Any]:
+def document(site: str, api_base: str = "/") -> dict[str, Any]:
     created = {"201": {"description": "Recorded, not verified. Merging says only that "
                                       "the record is well-formed and signed.",
                        "content": {"application/json": {"example": {
