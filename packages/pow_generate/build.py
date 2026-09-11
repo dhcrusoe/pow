@@ -15,12 +15,11 @@ import os
 import re
 import shutil
 from collections import Counter
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Set
-
-from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 import pow_core as core
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 TEMPLATES = Path(__file__).parent / "templates"
 STOPWORDS = {"the", "a", "an", "of", "in", "at", "to", "and", "or", "is", "that", "for"}
@@ -75,7 +74,7 @@ def required_fields() -> str:
     )
 
 
-def evidence_view(claim: Mapping) -> List[dict]:
+def evidence_view(claim: Mapping) -> list[dict]:
     """Evidence as a reader needs it, without touching the record.
 
     Two things the raw list cannot give a page. A label: rows were rendering as
@@ -131,7 +130,7 @@ def in_short(scope: str) -> str:
     return first
 
 
-def read_dir(log: Path, name: str) -> List[dict]:
+def read_dir(log: Path, name: str) -> list[dict]:
     d = log / name
     if not d.is_dir():
         return []
@@ -151,7 +150,7 @@ def claim_url(claim: dict) -> str:
     return f"claims/{core.short(claim['claim_id'])}-{slug(claim['proposition'])}"
 
 
-def log_now(records: List[dict]) -> str:
+def log_now(records: list[dict]) -> str:
     """Latest timestamp in the log. Keeps the build a pure function of its input."""
     stamps = []
     for r in records:
@@ -161,7 +160,7 @@ def log_now(records: List[dict]) -> str:
     return max(stamps) if stamps else "1970-01-01T00:00:00Z"
 
 
-def calibration(claims: List[dict], verdicts: List[dict]) -> dict:
+def calibration(claims: list[dict], verdicts: list[dict]) -> dict:
     """Is a verifier's stated confidence worth anything?
 
     One "80% confident" is unfalsifiable. A thousand are not: an agent that says
@@ -173,7 +172,7 @@ def calibration(claims: List[dict], verdicts: List[dict]) -> dict:
     verdicts shows nothing rather than a flattering default.
     """
     settled = {e["claim_id"]: e for e in core.settle(claims, verdicts)}
-    per: Dict[str, List[tuple]] = {}
+    per: dict[str, list[tuple]] = {}
     for v in verdicts:
         event = settled.get(v.get("claim_id"))
         conf = v.get("confidence")
@@ -200,14 +199,14 @@ def calibration(claims: List[dict], verdicts: List[dict]) -> dict:
     return out
 
 
-def observatory(claims: List[dict], verdicts: List[dict], agents: List[dict], now: str,
-                reg: Optional[dict] = None) -> dict:
+def observatory(claims: list[dict], verdicts: list[dict], agents: list[dict], now: str,
+                reg: dict | None = None) -> dict:
     reg = reg if reg is not None else core.registry(claims, core.settle(claims, verdicts))
     events = core.settle(claims, verdicts)
     counts = Counter(e["verdict"] for e in events)
     settled = len(events)
 
-    def pct(n: int) -> Optional[int]:
+    def pct(n: int) -> int | None:
         return round(100 * n / settled) if settled else None
 
     open_claims = [c for c in claims if c.get("path") == "open"]
@@ -217,7 +216,7 @@ def observatory(claims: List[dict], verdicts: List[dict], agents: List[dict], no
                    if e.get("confidence_mean") is not None]
     # An accusation with no quote is not counted: the door refuses those, and a
     # log written before that rule should not be reported as if it had passed it.
-    flaggers: Dict[str, Set[str]] = {}
+    flaggers: dict[str, set[str]] = {}
     for v in verdicts:
         if v.get("fraud_caught") and str(v.get("fraud_quote", "")).strip():
             flaggers.setdefault(v.get("claim_id", ""), set()).add(v.get("verifier", ""))
@@ -560,11 +559,13 @@ def head_commit(log: Path) -> str:
     try:
         return subprocess.run(["git", "rev-parse", "HEAD"], cwd=log, check=True,
                               capture_output=True, text=True).stdout.strip()
-    except Exception:
+    # OSError: git is not installed or `log` doesn't exist. CalledProcessError: log
+    # exists but has no commits yet (a freshly seeded, uncommitted repo).
+    except (OSError, subprocess.CalledProcessError):
         return ""
 
 
-def build(log: Path, out: Path, now: Optional[str] = None,
+def build(log: Path, out: Path, now: str | None = None,
           api_base: str = "http://localhost:8000") -> dict:
     claims = read_dir(log, "claims")
     verdicts = read_dir(log, "verdicts")
@@ -591,13 +592,13 @@ def build(log: Path, out: Path, now: Optional[str] = None,
     # A claim that says an earlier defect is gone. This is the only honest way the
     # network can measure whether it changes anything: not a self-declared benefit,
     # but a second claim, verified the same way as the first.
-    resolvers: Dict[str, dict] = {}
+    resolvers: dict[str, dict] = {}
     for c in claims:
         target = c.get("resolves")
         if target and events.get(c["claim_id"], {}).get("verdict") == "PASS":
             resolvers[target] = c
 
-    by_claim: Dict[str, List[dict]] = {}
+    by_claim: dict[str, list[dict]] = {}
     for v in verdicts:
         by_claim.setdefault(v["claim_id"], []).append(v)
 
@@ -1110,7 +1111,7 @@ def build(log: Path, out: Path, now: Optional[str] = None,
         jurisdiction=JURISDICTION, policy_effective=POLICY_EFFECTIVE,
     )
 
-    urls: List[str] = [""]
+    urls: list[str] = [""]
     views = []
     for c in sorted(claims, key=lambda c: c.get("submitted_at", ""), reverse=True):
         url = claim_url(c)

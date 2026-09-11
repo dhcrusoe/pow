@@ -23,12 +23,11 @@ E6 says a service was rendered. It says nothing about how much good it did.
 from __future__ import annotations
 
 import hashlib
-from typing import Tuple
 
 import pow_core as core
 
 
-def _dkim(manifest: dict, dnsfunc=None) -> Tuple[str, str, str]:
+def _dkim(manifest: dict, dnsfunc=None) -> tuple[str, str, str]:
     """The email shape: verify DKIM over the raw reply, then read it."""
     raw = manifest.get("message_raw", "")
     domain = str(manifest.get("attestor_domain", "")).lower().strip()
@@ -53,7 +52,7 @@ def _dkim(manifest: dict, dnsfunc=None) -> Tuple[str, str, str]:
     try:
         ok = (dkimlib.verify(body, dnsfunc=dnsfunc) if dnsfunc
               else dkimlib.verify(body))
-    except Exception as exc:                     # dkimpy raises broadly on junk
+    except Exception as exc:  # noqa: BLE001 — dkimpy raises broadly on junk
         return ("UNRESOLVABLE", "",
                 f"the reply could not be parsed as a signed message "
                 f"({type(exc).__name__}). Nothing is owed by the claimant.")
@@ -91,7 +90,7 @@ def _dkim(manifest: dict, dnsfunc=None) -> Tuple[str, str, str]:
             f"repeat this check without asking anyone.")
 
 
-def check(manifest: dict, dnsfunc=None, **_) -> Tuple[str, str, str]:
+def check(manifest: dict, dnsfunc=None, **_) -> tuple[str, str, str]:
     if manifest.get("message_raw"):
         return _dkim(manifest, dnsfunc)
     attestation = manifest.get("attestation")

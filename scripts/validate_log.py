@@ -14,7 +14,6 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Optional
 
 import pow_core as core
 
@@ -47,7 +46,7 @@ def claim_for(log: Path, record: dict):
 
 
 def check_file(path: Path, kind: str, keys: dict, rel: str,
-               log: Optional[Path] = None):
+               log: Path | None = None):
     raw = path.read_bytes()
     record = core.parse(raw)
     who = author(record)
@@ -101,7 +100,7 @@ def main(argv=None) -> int:
             print(f"FAIL {rel}\n     {rej}", file=sys.stderr)
             failures += 1
             continue
-        except Exception as exc:  # a crash is also a rejection, just a worse one
+        except Exception as exc:  # noqa: BLE001 — a crash is also a rejection, just worse
             if args.expect_failure:
                 print(f"  rejected {rel}: {type(exc).__name__}: {exc}")
                 continue
