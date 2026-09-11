@@ -12,7 +12,7 @@ nobody can shop the queue, because your draw is fixed by who you are.
 from __future__ import annotations
 
 import hashlib
-from typing import Iterable, List, Mapping, Optional
+from collections.abc import Iterable, Mapping
 
 
 def eligible(
@@ -21,7 +21,7 @@ def eligible(
     handouts: Iterable[Mapping],
     verifier: str,
     now: str,
-) -> List[str]:
+) -> list[str]:
     """Claim ids this verifier may be assigned, in deterministic order.
 
     An open claim needs several independent verifiers, so it stays in the pool
@@ -39,6 +39,10 @@ def eligible(
     out = []
     for c in claims:
         cid = c.get("claim_id")
+        # A claim reaches here only by way of validate(), which never writes one
+        # without a claim_id — this is the type system catching up to that
+        # invariant, not a new check on untrusted input.
+        assert isinstance(cid, str), "claim record missing claim_id"
         if cid in settled_ids or cid in already_ruled or c.get("claimant") == verifier:
             continue
         need = quorum_for(c)
@@ -69,10 +73,10 @@ def draw_seed(verifier_pubkey: str, head_commit: str, claim_id: str) -> bytes:
 
     with claim_id including its "sha256:" prefix, and literal pipe separators.
     """
-    return f"{verifier_pubkey}|{head_commit}|{claim_id}".encode("utf-8")
+    return f"{verifier_pubkey}|{head_commit}|{claim_id}".encode()
 
 
-def draw(candidates: List[str], verifier_pubkey: str, head_commit: str) -> Optional[str]:
+def draw(candidates: list[str], verifier_pubkey: str, head_commit: str) -> str | None:
     """Pick one candidate: lowest sha256(draw_seed) wins.
 
     Recomputable by anyone holding the public key, the head and the queue. Note
@@ -90,7 +94,7 @@ def draw(candidates: List[str], verifier_pubkey: str, head_commit: str) -> Optio
 
 
 def held_lease(handouts: Iterable[Mapping], verdicts: Iterable[Mapping],
-               verifier: str, now: str) -> Optional[Mapping]:
+               verifier: str, now: str) -> Mapping | None:
     """The verifier's own unexpired, unsettled handout, if it has one."""
     settled = {v.get("claim_id") for v in verdicts}
     mine = [
@@ -99,7 +103,11 @@ def held_lease(handouts: Iterable[Mapping], verdicts: Iterable[Mapping],
         and h.get("expires_at", "") > now
         and h.get("claim_id") not in settled
     ]
-    return sorted(mine, key=lambda h: h.get("issued_at", ""))[-1] if mine else None
+    # Not max(): on a tie (equal issued_at) max() keeps the first match and
+    # sorted()[-1] keeps the last, and mine is not necessarily issuance-ordered
+    # (handouts are read in filename order). Last-issued winning on a tie is the
+    # intended behaviour, so the two are not interchangeable here.
+    return sorted(mine, key=lambda h: h.get("issued_at", ""))[-1] if mine else None  # noqa: FURB192
 
 
 def assign(
@@ -110,7 +118,7 @@ def assign(
     verifier_pubkey: str,
     head_commit: str,
     now: str,
-) -> Optional[str]:
+) -> str | None:
     """Return the claim this verifier should check.
 
     The draw is seeded on the current head, which moves whenever anyone writes.

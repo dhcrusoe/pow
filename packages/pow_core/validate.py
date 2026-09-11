@@ -12,19 +12,18 @@ verified, and there is nothing here for anyone to withhold.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from difflib import get_close_matches
-from typing import Mapping, Optional
 
 from pydantic import ValidationError
 
 from . import records
-from .canonical import (CanonicalizationError, canonicalize,
-                        has_duplicate_keys, loads)
+from .canonical import CanonicalizationError, canonicalize, has_duplicate_keys, loads
 from .errors import CONTENT_HASH, PATH, SCHEMA, SIGNATURE, Rejection
 from .identity import content_hash, reserved_pseudonym, valid_pseudonym, verify
 
 ISO = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$")
-KINDS = {
+KINDS: dict[str, tuple[type[records.Strict], str | None, str]] = {
     "claim": (records.Claim, "claim_id", "claims"),
     "research": (records.Research, "research_id", "research"),
     "verdict": (records.Verdict, None, "verdicts"),
@@ -50,10 +49,10 @@ def validate(
     raw: bytes,
     kind: str,
     *,
-    public_key: Optional[str] = None,
-    path: Optional[str] = None,
-    classes: Optional[Mapping] = None,
-    claim: Optional[Mapping] = None,
+    public_key: str | None = None,
+    path: str | None = None,
+    classes: Mapping | None = None,
+    claim: Mapping | None = None,
 ) -> dict:
     """Validate one record. Returns the parsed dict, or raises Rejection.
 
@@ -164,7 +163,7 @@ def validate(
 SENTENCE_BREAK = re.compile(r"[.!?]['\")\]]?\s+(?=[A-Z(\[])")
 
 
-def _claim_rules(record: Mapping, classes: Optional[Mapping] = None) -> None:
+def _claim_rules(record: Mapping, classes: Mapping | None = None) -> None:
     prop = record.get("proposition", "")
     if "\n" in prop:
         raise Rejection(SCHEMA, "proposition must be one sentence, on one line")
@@ -631,7 +630,7 @@ def _claim_prose(claim: Mapping) -> str:
     return "\n".join(parts)
 
 
-def _verdict_rules(record: Mapping, claim: Optional[Mapping]) -> None:
+def _verdict_rules(record: Mapping, claim: Mapping | None) -> None:
     """An accusation carries the evidence for itself.
 
     fraud_caught used to be an unchecked boolean that paid the verifier who set
