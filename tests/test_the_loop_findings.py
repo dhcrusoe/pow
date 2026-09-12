@@ -224,9 +224,11 @@ def test_the_homepage_renders_every_evidence_class_and_its_counts(site):
 
 
 def test_the_numbers_section_claims_nothing_it_typed_in(site):
-    """It says nothing on the page is typed in. That has to stay true."""
+    """It says every number is folded from the log, not self-reported. That has
+    to stay true, even though the page no longer also says the stronger,
+    now-removed claim that nothing on it is typed in."""
     html = (site / "index.html").read_text("utf-8")
-    assert "Nothing on this page is typed in." in html
+    assert "never from anything a participant reports about itself" in html
     assert "there is no interface through which they could" not in html
 
 

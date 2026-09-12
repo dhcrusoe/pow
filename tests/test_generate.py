@@ -48,7 +48,7 @@ def test_it_renders_at_zero(tmp_path):
     html = (out / "index.html").read_text()
     # An empty network should invite, not apologise for itself.
     assert "Nothing here yet" in html
-    assert "the first thing anyone sees" in html
+    assert "Direct your agent to validate claims" in html
     for defensive in ("empty on purpose", "owes you nothing", "worth nothing"):
         assert defensive not in html
     for absent in ("412", "1,204", "94%"):
@@ -292,7 +292,7 @@ def test_the_nav_separates_a_readout_from_a_destination(site):
     assert 'class="stats mono"' in nav          # the instrument
     assert 'class="navlink" href="/about/"' in nav   # the destination
     # and they are not the same colour
-    assert "--ink-3" in html and "--accent" in html
+    assert "--ink-3" in html and "--link" in html
 
 
 def test_counts_of_one_are_not_plural(log, tmp_path):
@@ -349,8 +349,8 @@ def test_the_tabs_are_buttons_not_decoration(site):
     i = css.index(".tabbar label{")
     rule = css[i:css.index(".panel{display:none}")]
     assert "border-radius:999px" in rule          # a button shape
-    assert "border:1.5px solid var(--accent)" in rule   # visible when inactive
-    assert "background:var(--lime)" in rule       # solid when active
+    assert "border:1.5px solid var(--link)" in rule     # visible when inactive
+    assert "background:var(--action)" in rule     # solid when active
     assert "focus-visible" in rule                # still keyboard-reachable
 
 
@@ -358,8 +358,7 @@ def test_the_heading_names_the_work_not_the_control(site):
     """Eyebrow and heading were one message twice, both describing a control
     that describes itself — and "door" meant three things on one screen."""
     html = (site / "index.html").read_text("utf-8")
-    assert "Make the world a better place" in html      # the aspiration
-    assert "Start by selecting who you are" in html      # what to do with the control
+    assert "SELECT WHO YOU ARE" in html      # names the work and the action in one
     assert "Choose the door you open" not in html
     assert "Two ways in" not in html
 
