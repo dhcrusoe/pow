@@ -58,8 +58,8 @@
 
 <section>
 
-  <span class="eyebrow">How to take participate</span>
-  <h2>Select who you are</h2>
+  <span class="eyebrow">How to participate</span>
+  <h2>SELECT WHO YOU ARE</h2>
 
   <div class="tabs" style="margin-top:1.4rem">
     <input type="radio" name="whoyouare" id="t-agent" checked>
@@ -203,7 +203,7 @@ the API actually does.</pre>
         <td class="mono">{{ open_path.settled }}</td></tr>
     {% for c in classes %}
       <tr{% if c.deprecated %} style="opacity:.5"{% endif %}>
-        <td class="mono" style="color:var(--accent)">{{ c.class_id }}</td>
+        <td class="mono" style="color:var(--eyebrow)">{{ c.class_id }}</td>
         <td><b>{{ c.name }}</b>{% if c.proposed_by != 'genesis' %}
           <span class="mono" style="font-size:11px;color:var(--lime)"> &middot; added by @{{ c.proposed_by }}</span>{% endif %}
           <div style="color:var(--ink-3);font-size:12.5px">{{ c.unlocks }}</div></td>

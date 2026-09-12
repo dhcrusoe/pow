@@ -20,38 +20,35 @@
 {% block jsonld %}{% endblock %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-{# Newsreader for h1/h2 only — a serif built for on-screen reading, not a
-   revival of one. Fraunces read as antiqued at heading weight; this keeps the
-   same trick (optical-size axis left variable, 6..72, so
-   font-optical-sizing:auto gives the hero a display cut and a policy-page h2
-   a text cut off the same file) without the swashy ball terminals. IBM Plex
-   Sans stays for the body in place of Inter: a coherent pair for
-   technical-but-humane contexts, not the reflexive SaaS default. JetBrains
-   Mono is untouched. #}
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&family=Source+Sans+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 :root{
-  /* Ground: a deep forest floor rather than blue-black slate. Same darkness,
-     warmer and greener, so the palette above it reads as growing things. */
-  --bg:#0A0F0C;
-  /* Structure is neutral on purpose. These used to be lime (rgba(171,255,79,…))
-     — the "one per screen" emphasis colour, tinting every card fill and every
-     hairline on the site, which gave card surfaces a faint green glow. White at
-     low alpha instead, luminance-matched so borders keep exactly the weight
-     they had. The ground stays warm; only what sits on it goes grey. */
+  /* Near-black, not black: same reasoning as Material's dark-theme surface —
+     avoids the halation bright UI throws against true #000. */
+  --bg:#121212;
   --panel:rgba(255,255,255,.04); --stroke:rgba(255,255,255,.12);
   --stroke-2:rgba(255,255,255,.2);
-  --ink:#F2F7F3; --ink-2:#B4C4B8; --ink-3:#7C8F82;
+  /* Neutral, not hue-tinted: headings and body text are white at different
+     opacities rather than different colours, so the palette's few saturated
+     accents (below) are the only colour doing any signalling. */
+  --ink:#F5F5F5; --ink-2:rgba(255,255,255,.87); --ink-3:rgba(255,255,255,.6);
 
-  /* Brand accent and semantic colour are now separate. Mint used to be both,
-     so every PASS chip was also shouting the brand. */
-  --accent:#08BDBD;          /* teal — links, eyebrows, the mark */
-  --accent-soft:rgba(8,189,189,.14);
-  --lime:#ABFF4F;            /* emphasis. Brighter than body text: one per screen */
+  /* Three jobs, three blues, chosen by contrast against --bg: #0197E5
+     (5.85:1) carries text on its own, so it does links. #1887AF (4.57:1)
+     clears text contrast by less — fine for short, bold, tracked eyebrows,
+     tight for anything read at length. #2C65EF (3.76:1) fails as text on
+     this ground; it works as a filled surface with white on top instead,
+     which is what a button is. */
+  --link:#0197E5;
+  --link-soft:rgba(1,151,229,.14);
+  --eyebrow:#1887AF;
+  --action:#2C65EF;
+  --action-deep:#3426AA;     /* too dark to read as text (1.8:1); white-on-it
+                                 is 10.5:1, so it's the hover/pressed shade */
+  --lime:#ABFF4F;            /* the h1 emphasis word. Nothing else spends it. */
   --green:#29BF12;           /* PASS */
   --amber:#FF9914;           /* UNRESOLVABLE — not a failure, so warm not red */
   --red:#F21B3F;             /* FAIL */
-  --mint:#08BDBD;            /* kept: older rules still reference it */
 
   /* Six domains, six hues. This is the substance of the network and it used
      to render as three identical grey chips with numbers in them. Colour here
@@ -75,25 +72,23 @@
   --d6:#B47BFF;  /* health & wellbeing — violet (unchanged) */
   --r:12px}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Source Sans Pro",system-ui,sans-serif;
   font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
 .wrap{max-width:64rem;margin:0 auto;padding:0 1.5rem}
-/* h3 carries no rule of its own — nothing on the site uses one yet, and it
-   inherits the body face rather than guessing at a serif weight for content
-   that doesn't exist. */
-h1,h2{font-family:Newsreader,Georgia,serif;font-weight:600;letter-spacing:-.008em;
-  line-height:1.08;margin:0;text-wrap:balance}
-/* Lime means the good: the word in the headline, and the numbers that count it.
-   Teal is identity — links, eyebrows, the mark. Two colours, two jobs. */
+/* h3 carries no rule of its own — nothing on the site uses one yet. */
+h1,h2{font-family:Ubuntu,system-ui,sans-serif;font-weight:700;letter-spacing:.02em;
+  line-height:1.08;margin:0;text-wrap:balance;text-transform:uppercase}
+/* Lime means the good: the word in the headline. Nothing else on the page
+   spends it, so it stays rare enough to mean something when it shows up. */
 h1 em{font-style:normal;color:var(--lime)}
 /* The type scale belongs here, not inline in a template where it drifts. */
-h1.hero{font-size:clamp(2rem,5vw,3.2rem);letter-spacing:-.005em;line-height:1.05}
+h1.hero{font-size:clamp(2rem,5vw,3.2rem);letter-spacing:.01em;line-height:1.05}
 .lede-hero{font-size:1.15rem;margin-top:1.1rem}
 h1.page{font-size:clamp(1.5rem,3.4vw,2.2rem)}
 h1.agent{font-size:clamp(1.8rem,4vw,2.6rem)}
-a{color:var(--mint);text-decoration:none}
+a{color:var(--link);text-decoration:none}
 a:hover{text-decoration:underline}
-a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+a:focus-visible{outline:2px solid var(--link);outline-offset:3px;border-radius:4px}
 .mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
 nav{border-bottom:1px solid var(--stroke)}
 /* .85rem, not 1.1: the brand is a 32px mark now, not a 15px glyph, so the
@@ -107,9 +102,7 @@ nav .wrap{display:flex;justify-content:space-between;align-items:center;
 .navright{display:flex;align-items:baseline;gap:1.4rem}
 .stats{font-size:12px;color:var(--ink-3)}
 .stats a{color:inherit}
-/* Teal, not lime: lime is the emphasis colour and the mark already spends it.
-   Two limes in one bar is one too many. */
-.navlink{font-size:13px;color:var(--accent);letter-spacing:.01em}
+.navlink{font-size:13px;color:var(--link);letter-spacing:.01em}
 
 /* Tabs, with no javascript: radio inputs and :checked siblings. Both panels stay
    in the DOM whichever is showing, which matters more here than usual — agents,
@@ -122,31 +115,29 @@ nav .wrap{display:flex;justify-content:space-between;align-items:center;
    so 12.16px each side reaches the 44px minimum both Apple and Google ask for.
    It was 39.6px. */
 .tabbar label{cursor:pointer;padding:.76rem 1.1rem;font-size:14px;font-weight:600;
-  border-radius:999px;border:1.5px solid var(--accent);color:var(--accent);
+  border-radius:999px;border:1.5px solid var(--link);color:var(--link);
   background:transparent;transition:background .12s,color .12s,border-color .12s;
   line-height:1.2;white-space:nowrap}
-.tabbar label:hover{background:var(--accent-soft)}
-/* Active is solid lime with the page's own ground as its text: the brightest
-   pairing this palette can make, and unmistakably the selected one.
-   ~ .tabbar label, not + label: the labels live one level down inside
+.tabbar label:hover{background:var(--link-soft)}
+/* ~ .tabbar label, not + label: the labels live one level down inside
    .tabbar, not as the input's next sibling, so the adjacent combinator here
    never matched anything — every tab has been rendering "unselected" since
    this rule was written. Caught by actually running the generator, not by
    reading the CSS. */
 #t-agent:checked ~ .tabbar label[for=t-agent],
-#t-human:checked ~ .tabbar label[for=t-human]{background:var(--lime);border-color:var(--lime);
-  color:var(--bg)}
+#t-human:checked ~ .tabbar label[for=t-human]{background:var(--action);border-color:var(--action);
+  color:#fff}
 #t-agent:focus-visible ~ .tabbar label[for=t-agent],
 #t-human:focus-visible ~ .tabbar label[for=t-human]{outline:2px solid var(--ink);outline-offset:3px}
 /* Same button language as the tabs, on <button> (/sign/) and now <a> (the
    hero CTAs) alike — so it needs its own text-decoration, not just <button>'s
    implicit none. */
 .btn{cursor:pointer;padding:.66rem 1.1rem;font-size:14px;font-weight:600;
-  border-radius:999px;border:1.5px solid var(--lime);background:var(--lime);
-  color:var(--bg);font-family:inherit;display:inline-flex;align-items:center;
-  text-decoration:none}
-.btn:hover{text-decoration:none}
-.btn.ghost{background:transparent;border-color:var(--accent);color:var(--accent)}
+  border-radius:999px;border:1.5px solid var(--action);background:var(--action);
+  color:#fff;font-family:inherit;display:inline-flex;align-items:center;
+  text-decoration:none;transition:background .12s,border-color .12s}
+.btn:hover{text-decoration:none;background:var(--action-deep);border-color:var(--action-deep)}
+.btn.ghost{background:transparent;border-color:var(--link);color:var(--link)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 textarea,select{width:100%;background:rgba(0,0,0,.45);color:var(--ink);
   border:1px solid var(--stroke);border-radius:var(--r);padding:.7rem;
@@ -162,7 +153,7 @@ select{width:auto;padding:.6rem .7rem;font-size:13px}
    Spacing stays the caller's call — <details> shows up inside a card, inside
    a hairlined list row, and bare, and no one rule fits all three. */
 summary{cursor:pointer;color:var(--ink-2);font-weight:600}
-summary::marker{color:var(--accent)}
+summary::marker{color:var(--eyebrow)}
 summary:hover{color:var(--ink)}
 @media (max-width:30rem){.navright{gap:.9rem}.stats{font-size:11px}}
 section{padding:3rem 0;border-bottom:1px solid var(--stroke)}
@@ -182,7 +173,7 @@ section:last-of-type{border-bottom:0}
    block's job and wraps differently on every width. */
 .frow{margin-top:.85rem}
 .eyebrow{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--accent);display:block;margin-bottom:.8rem}
+  text-transform:uppercase;color:var(--eyebrow);display:block;margin-bottom:.8rem}
 .lede{color:var(--ink-2);max-width:44rem;margin:.9rem 0 0}
 .card{background:var(--panel);border:1px solid var(--stroke);border-radius:var(--r);padding:1.2rem}
 .grid{display:grid;gap:.8rem}
