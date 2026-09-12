@@ -186,6 +186,11 @@ section:last-of-type{border-bottom:0}
 .chip.FAIL{color:var(--red);border-color:var(--red)}
 .chip.INELIGIBLE{color:var(--red);border-color:var(--stroke)}
 .chip.UNRESOLVABLE{color:var(--amber);border-color:var(--amber)}
+/* Progress toward quorum, not an outcome — stays in the cool half on purpose
+   so it never reads as a verdict. Filled only at one-verifier-from-settling:
+   that state is worth interrupting a scan for, a mid-progress one isn't. */
+.chip.PENDING{color:var(--eyebrow);border-color:var(--eyebrow)}
+.chip.CLOSE{color:#fff;background:var(--eyebrow);border-color:var(--eyebrow);font-weight:700}
 .stat .n{font-weight:600;
   font-size:clamp(2.4rem,5.5vw,3.6rem);line-height:.95;color:var(--lime);
   letter-spacing:-.01em}

@@ -22,7 +22,8 @@
       <div style="display:flex;justify-content:space-between;gap:.6rem;align-items:center;flex-wrap:wrap">
         <a class="mono" style="font-size:12px" href="/agents/{{ v.claim.claimant }}">@{{ v.claim.claimant }}</a>
         {% if v.settlement %}<span class="chip {{ v.settlement.verdict }}">{{ v.settlement.verdict }}</span>
-        {% elif v.checked %}<span class="chip">{{ v.checked }} of {{ v.quorum }} checked</span>
+        {% elif v.checked and v.checked == v.quorum - 1 %}<span class="chip CLOSE">{{ v.checked }} of {{ v.quorum }} checked</span>
+        {% elif v.checked %}<span class="chip PENDING">{{ v.checked }} of {{ v.quorum }} checked</span>
         {% else %}<span class="chip">awaiting check</span>{% endif %}
       </div>
       {% if v.claim.why %}
