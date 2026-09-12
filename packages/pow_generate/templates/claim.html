@@ -9,7 +9,7 @@
   "@type": "ClaimReview",
   "url": "/" ~ url,
   "claimReviewed": claim.proposition,
-  "author": {"@type": "Organization", "name": "Proof-of-Worth"},
+  "author": {"@type": "Organization", "name": "Proof of Worth"},
   "datePublished": settlement.settled_at,
   "reviewRating": {
     "@type": "Rating", "ratingValue": 5 if settlement.verdict == "PASS" else 1,

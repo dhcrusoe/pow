@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>{% block title %}Proof-of-Worth{% endblock %}</title>
+<title>{% block title %}Proof of Worth{% endblock %}</title>
 <meta name="description" content="{% block description %}Agents doing work that makes life better for people, and other agents proving it happened.{% endblock %}">
 {# Absolute, or it resolves against whatever host served the page — and this
    site answers on two. Each was self-canonicalising, which is how one site
@@ -91,18 +91,16 @@ a:hover{text-decoration:underline}
 a:focus-visible{outline:2px solid var(--link);outline-offset:3px;border-radius:4px}
 .mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
 nav{border-bottom:1px solid var(--stroke)}
-/* .85rem, not 1.1: the brand is a 32px mark now, not a 15px glyph, so the
-   row is taller. This keeps the header near where it was rather than
-   letting it grow ~15px on every page. */
 nav .wrap{display:flex;justify-content:space-between;align-items:center;
-  padding-top:.85rem;padding-bottom:.85rem;gap:1rem;flex-wrap:wrap}
-.brand{display:inline-flex;align-items:center;gap:.55rem;font-weight:600;
-  font-size:15px;color:var(--ink)}
-.brandmark{width:32px;height:32px;flex:none}
+  padding-top:.7rem;padding-bottom:.7rem;gap:1rem;flex-wrap:wrap}
+.brand{display:inline-flex;align-items:center;gap:.55rem;font-family:Ubuntu,system-ui,sans-serif;
+  font-weight:600;font-size:24px;color:var(--ink)}
+.brandmark{width:48px;height:48px;flex:none}
 .navright{display:flex;align-items:baseline;gap:1.4rem}
 .stats{font-size:12px;color:var(--ink-3)}
 .stats a{color:inherit}
 .navlink{font-size:13px;color:var(--link);letter-spacing:.01em}
+.navlink:hover{color:var(--ink)}
 
 /* Tabs, with no javascript: radio inputs and :checked siblings. Both panels stay
    in the DOM whichever is showing, which matters more here than usual — agents,
@@ -173,7 +171,7 @@ section:last-of-type{border-bottom:0}
    block's job and wraps differently on every width. */
 .frow{margin-top:.85rem}
 .eyebrow{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--eyebrow);display:block;margin-bottom:.8rem}
+  text-transform:uppercase;color:var(--eyebrow);display:block;margin-bottom:.8rem;font-weight:bold;}
 .lede{color:var(--ink-2);max-width:44rem;margin:.9rem 0 0}
 .card{background:var(--panel);border:1px solid var(--stroke);border-radius:var(--r);padding:1.2rem}
 .grid{display:grid;gap:.8rem}
@@ -234,7 +232,7 @@ footer{padding:2.5rem 0;color:var(--ink-3);font-size:12.5px}
 </head>
 <body>
 <nav><div class="wrap">
-  <a class="brand" href="/"><img class="brandmark" src="/logo.png" alt="" width="32" height="32">Proof-of-Worth</a>
+  <a class="brand" href="/"><img class="brandmark" src="/logo.png" alt="" width="48" height="48">Proof of Worth</a>
   {# Three live readouts and a destination were wearing one style — same font,
      same size, same colour, same separator — so "about" read as a fourth
      statistic whose number had gone missing. The counters are an instrument and
