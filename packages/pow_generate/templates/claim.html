@@ -99,6 +99,12 @@
 
 <section>
   <h2 style="font-size:1.3rem">Verdicts</h2>
+  {% if not settlement %}
+  <p class="lede" style="margin-top:.4rem">
+    {% if checked %}{{ checked }} of {{ quorum }} verifiers have checked this &mdash;
+      {{ quorum - checked }} more needed to settle.
+    {% else %}Needs {{ quorum }} verifier{{ '' if quorum == 1 else 's' }} to settle.{% endif %}</p>
+  {% endif %}
   {% if verdicts %}
   <div class="grid" style="margin-top:1.2rem">
     {% for v in verdicts %}

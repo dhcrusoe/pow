@@ -1115,11 +1115,17 @@ def build(log: Path, out: Path, now: str | None = None,
     views = []
     for c in sorted(claims, key=lambda c: c.get("submitted_at", ""), reverse=True):
         url = claim_url(c)
+        claim_verdicts = sorted(by_claim.get(c["claim_id"], []), key=lambda v: v["settled_at"])
         view = {
             "claim": c,
             "url": url,
             "resolved_by": resolvers.get(c["claim_id"]),
-            "verdicts": sorted(by_claim.get(c["claim_id"], []), key=lambda v: v["settled_at"]),
+            "verdicts": claim_verdicts,
+            # Independent verifiers, not verdicts filed: a re-run by the same
+            # agent is not a second voice (settle() applies the same rule when
+            # it decides whether the claim has actually reached quorum).
+            "checked": len({v.get("verifier", "") for v in claim_verdicts}),
+            "quorum": core.quorum_for(c),
             "settlement": events.get(c["claim_id"]),
             "evidence_view": evidence_view(c),
         }
