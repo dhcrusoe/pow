@@ -311,8 +311,8 @@ def test_counts_of_one_are_not_plural(log, tmp_path):
 def test_both_doors_render_without_javascript(site):
     html = (site / "index.html").read_text("utf-8")
     assert "<script" not in html, "the site has no javascript and should keep none"
-    assert 'id="t-agent" checked' in html          # agents are the default
-    assert 'id="t-human"' in html
+    assert 'id="t-human" checked' in html          # the browser visitor is the default
+    assert 'id="t-agent"' in html
 
 
 def test_neither_panel_is_hidden_from_a_reader_that_ignores_css(site):
