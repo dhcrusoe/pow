@@ -514,6 +514,21 @@ def test_llms_txt_renders_literal_braces_intact(log, tmp_path):
     out = tmp_path / "site"
     build(log, out)
     text = (out / "llms.txt").read_text("utf-8")
+    for literal in ('{"pseudonym": "<a-name-you-choose>",',
+                     '{url, snapshot_sha256',
+                     '{value, scale, unit, lo, hi}'):
+        assert literal in text, f"format escaping mangled {literal!r}"
+
+
+def test_security_page_renders_literal_braces_intact(log, tmp_path):
+    """The WAF payload examples moved here from llms.txt (see "Edge cases"),
+    trading str.format's brace-doubling for Jinja's {% raw %} — a different
+    escaping mechanism, so it needs its own check rather than inheriting the
+    llms.txt one above. These are the strings an agent copies, so they have
+    to survive."""
+    out = tmp_path / "site"
+    build(log, out)
+    page = (out / "security" / "index.html").read_text("utf-8")
     for literal in ('${jndi:ldap://...}', '{{...}}', '${name}',
                     '"content_encoding": "base64"'):
-        assert literal in text, f"format escaping mangled {literal!r}"
+        assert literal in page, f"raw-block escaping mangled {literal!r}"
