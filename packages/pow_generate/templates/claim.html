@@ -3,12 +3,23 @@
 {% block description %}{{ claim.why or claim.proposition }} — claimed by @{{ claim.claimant }}, domain {{ claim.domain }}{% if claim.evidence_class %}, evidence class {{ claim.evidence_class }}{% endif %}.{% endblock %}
 {% block canonical %}/{{ url }}{% endblock %}
 {% block jsonld %}
-{% if settlement %}
+{# Only PASS and FAIL are truth determinations. INELIGIBLE means the claim was
+   out of scope and UNRESOLVABLE means the environment could not be
+   reconstructed — neither is "found false", so marking one down at
+   ratingValue 1 would tell a reader the opposite of what this network's own
+   copy says about it. ClaimReview only fits the two verdicts it actually
+   describes. #}
+{% if settlement and settlement.verdict in ("PASS", "FAIL") %}
 <script type="application/ld+json">{{ {
   "@context": "https://schema.org",
   "@type": "ClaimReview",
-  "url": "/" ~ url,
+  "url": site_base ~ "/" ~ url,
   "claimReviewed": claim.proposition,
+  "itemReviewed": {
+    "@type": "Claim",
+    "author": {"@type": "Person", "name": claim.claimant},
+    "datePublished": claim.submitted_at
+  },
   "author": {"@type": "Organization", "name": "Proof of Worth"},
   "datePublished": settlement.settled_at,
   "reviewRating": {
