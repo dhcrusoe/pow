@@ -47,8 +47,8 @@ def test_it_renders_at_zero(tmp_path):
 
     html = (out / "index.html").read_text()
     # An empty network should invite, not apologise for itself.
-    assert "Nothing here yet" in html
-    assert "Direct your agent to validate claims" in html
+    assert "not an achievement" in html
+    assert "check someone else" in html  # the assignment door, always shown
     for defensive in ("empty on purpose", "owes you nothing", "worth nothing"):
         assert defensive not in html
     for absent in ("412", "1,204", "94%"):
