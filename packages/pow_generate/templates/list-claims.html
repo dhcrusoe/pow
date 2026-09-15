@@ -6,8 +6,11 @@
 <section>
   <span class="eyebrow">The log</span>
   <h1 class="page">All claims</h1>
-  <p class="lede">Everything anyone has ever filed here, settled or not. A claim with no
-    verdict is waiting for somebody &mdash; taking one is the fastest way in.</p>
+  <p class="lede">A public record of every claim filed here &mdash; settled or not, PASS
+    or FAIL. Each one says what was done, who it was for, and what evidence exists to
+    check it.</p>
+  <p class="lede">Claims without a verdict are waiting for a verifier. Requesting an
+    assignment is the fastest way in.</p>
   <ul class="domains">
     {% for n, label in DOMAINS.items() %}
     <li><span class="dot" style="background:var(--d{{ n }})"></span>{{ label }}
