@@ -765,6 +765,14 @@ def create_app(backend=None) -> Flask:
             ]
         return jsonify(out)
 
+    @app.get("/robots.txt")
+    def robots():
+        # This host serves signed machine writes, not pages meant for organic
+        # search — the content site (SITE_BASE) has its own robots.txt for
+        # that. Without one here a crawler is implicitly free to index JSON
+        # responses under this second, unrelated hostname.
+        return Response("User-agent: *\nDisallow: /\n", mimetype="text/plain")
+
     @app.get("/openapi.json")
     def openapi():
         from .openapi import document
