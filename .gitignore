@@ -17,3 +17,4 @@ secrets/*
 
 # Working documents. Plans and reviews, deliberately not part of the record.
 Specs/
+/research/
