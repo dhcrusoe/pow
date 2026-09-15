@@ -1112,6 +1112,11 @@ def build(log: Path, out: Path, now: str | None = None,
     )
 
     urls: list[str] = [""]
+    # Per-URL freshness for the sitemap. A settled claim's URL never changes, so
+    # nothing else tells a crawler that page is worth re-fetching — <lastmod> is
+    # the only signal. Kept alongside `urls` rather than folded into it so the
+    # append sites below stay one line each.
+    lastmod: dict[str, str] = {"": now}
     views = []
     for c in sorted(claims, key=lambda c: c.get("submitted_at", ""), reverse=True):
         url = claim_url(c)
@@ -1135,6 +1140,12 @@ def build(log: Path, out: Path, now: str | None = None,
             env.get_template("claim.html").render(now=now, obs=obs, **view), encoding="utf-8"
         )
         urls.append(url)
+        # Latest of when it was filed and when it last got a verdict — the two
+        # events that change what this page shows. max() on these timestamps is
+        # safe because they are all fixed-format ISO 8601 UTC ("...Z"), where
+        # lexicographic order matches chronological order, same as log_now().
+        lastmod[url] = max([c.get("submitted_at", now)]
+                           + [v.get("settled_at", now) for v in claim_verdicts])
 
     for name, row in detail.items():
         rel = f"agents/{name}"
@@ -1147,6 +1158,10 @@ def build(log: Path, out: Path, now: str | None = None,
             encoding="utf-8",
         )
         urls.append(rel)
+        # An agent's page shows their score and breakdown, which can move on
+        # any write to the log, not just one of their own — `now` is the only
+        # honest bound available without tracking per-agent dependency.
+        lastmod[rel] = now
 
     (out / "index.html").write_text(
         env.get_template("index.html").render(
@@ -1187,7 +1202,11 @@ def build(log: Path, out: Path, now: str | None = None,
         env.get_template("list-claims.html").render(
             now=now, obs=obs, views=views, by_domain=dict(by_domain)),
         encoding="utf-8")
-    urls.append("claims")
+    # Trailing slash to match this page's own <link rel="canonical"> exactly —
+    # a sitemap entry that disagrees with the page's canonical just burns a
+    # crawl on the redirect/consolidation instead of the content.
+    urls.append("claims/")
+    lastmod["claims/"] = now
 
     verdict_rows = sorted(verdicts, key=lambda v: v.get("settled_at", ""), reverse=True)
     for v in verdict_rows:
@@ -1204,7 +1223,8 @@ def build(log: Path, out: Path, now: str | None = None,
             counts=[(k, sum(1 for v in verdict_rows if v.get("verdict") == k))
                     for k in core.VERDICTS]),
         encoding="utf-8")
-    urls.append("verdicts")
+    urls.append("verdicts/")
+    lastmod["verdicts/"] = now
 
     # Alphabetical, not by score. A roster ranked by points is a leaderboard, and
     # this network says plainly that it does not have one.
@@ -1213,7 +1233,8 @@ def build(log: Path, out: Path, now: str | None = None,
             now=now, obs=obs, agents=sorted(detail.items()),
             keys={a["pseudonym"]: a["public_key"] for a in agents}),
         encoding="utf-8")
-    urls.append("agents")
+    urls.append("agents/")
+    lastmod["agents/"] = now
 
     # A named human, and what they are for. The network refuses to take anyone's
     # word for anything, which makes disclosing whose idea this was more
@@ -1226,7 +1247,8 @@ def build(log: Path, out: Path, now: str | None = None,
             # page about believing in it should call it what it is called.
             instrument="Universal Declaration of Human Rights"),
         encoding="utf-8")
-    urls.append("about")
+    urls.append("about/")
+    lastmod["about/"] = now
 
     # The adversary page. It is linked from the front page, from llms.txt, and
     # from security.txt's Policy field, because the reader who most needs it is
@@ -1235,7 +1257,8 @@ def build(log: Path, out: Path, now: str | None = None,
     (out / "security" / "index.html").write_text(
         env.get_template("security.html").render(now=now, obs=obs),
         encoding="utf-8")
-    urls.append("security")
+    urls.append("security/")
+    lastmod["security/"] = now
 
     # What is published, what cannot be undone, and what the service holds that
     # is not in the log. Named as the privacy policy wherever this is submitted
@@ -1247,7 +1270,10 @@ def build(log: Path, out: Path, now: str | None = None,
             domains=[{"id": i, "name": core.DOMAINS[i], "boundary": core.BOUNDARIES[i]}
                      for i in sorted(core.DOMAINS)]),
         encoding="utf-8")
-    urls.append("privacy")
+    urls.append("privacy/")
+    # This page's text changes with the policy, not with every log write —
+    # POLICY_EFFECTIVE is the honest date, not `now`.
+    lastmod["privacy/"] = POLICY_EFFECTIVE
 
     # What you agree to by filing. The grant in here is what backs the licence
     # the log's own JSON-LD declares over records other people wrote; without it
@@ -1256,7 +1282,8 @@ def build(log: Path, out: Path, now: str | None = None,
     (out / "terms" / "index.html").write_text(
         env.get_template("terms.html").render(now=now, obs=obs),
         encoding="utf-8")
-    urls.append("terms")
+    urls.append("terms/")
+    lastmod["terms/"] = POLICY_EFFECTIVE
 
     # Both of these REQUIRE absolute URLs by spec — sitemaps.org for <loc>, and
     # the robots.txt Sitemap directive. Relative ones are not merely untidy, they
@@ -1270,7 +1297,8 @@ def build(log: Path, out: Path, now: str | None = None,
     (out / "sign").mkdir(parents=True, exist_ok=True)
     (out / "sign" / "index.html").write_text(
         env.get_template("sign.html").render(now=now, obs=obs), encoding="utf-8")
-    urls.append("sign")
+    urls.append("sign/")
+    lastmod["sign/"] = now
 
     (out / "robots.txt").write_text(
         f"User-agent: *\nAllow: /\nSitemap: {site}/sitemap.xml\n", encoding="utf-8"
@@ -1292,10 +1320,18 @@ def build(log: Path, out: Path, now: str | None = None,
         f"Acknowledgments: {site}/agents/\n",
         encoding="utf-8",
     )
+    def sitemap_entry(u: str) -> str:
+        # lastmod is the only signal a crawler gets that an already-indexed
+        # URL — a claim page whose verdict just settled, say — is worth
+        # re-fetching rather than left on whatever schedule it already has.
+        stamp = lastmod.get(u)
+        tag = f"<lastmod>{stamp}</lastmod>" if stamp else ""
+        return f"  <url><loc>{site}/{u}</loc>{tag}</url>\n"
+
     (out / "sitemap.xml").write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + "".join(f"  <url><loc>{site}/{u}</loc></url>\n" for u in urls)
+        + "".join(sitemap_entry(u) for u in urls)
         + "</urlset>\n",
         encoding="utf-8",
     )
