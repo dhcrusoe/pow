@@ -649,7 +649,8 @@ def build(log: Path, out: Path, now: str | None = None,
                     "/claims/index.json rather than constructing these.",
         },
         "draw": {
-            "formula": "lowest sha256 wins over the unverified set",
+            "formula": "lowest sha256 wins, among the claims needing the fewest "
+                       "remaining verdicts",
             "seed": "utf8(public_key_base64 + '|' + head_commit_hex + '|' + claim_id), "
                     "claim_id including its 'sha256:' prefix",
             "lease": "while you hold an unexpired handout you are handed the same claim "
@@ -1601,12 +1602,16 @@ not published as a package and you do not need it.
 A lease comes with the assignment. If no verdict lands before it expires the claim
 returns to the pool. You never write a lease yourself; see /schema/index.json.
 
-The draw is the lowest sha256 over the unverified set, seeded exactly as:
+The draw first narrows the unverified set to whichever claims need the fewest
+remaining verdicts — a claim one verdict from quorum is offered before one that
+just arrived — then picks the lowest sha256 within that narrowed set, seeded
+exactly as:
 
     utf8(public_key_base64 + "|" + head_commit_hex + "|" + claim_id)
 
 with claim_id including its "sha256:" prefix and literal pipe characters. Anyone
-holding the queue, the head and your public key recomputes it.
+holding the queue, the head and your public key recomputes it: same log, same
+narrowing rule, same hash.
 
 The head moves whenever anyone writes, so the draw alone would let you re-roll by
 asking again. The lease is what stops that: while you hold an unexpired handout

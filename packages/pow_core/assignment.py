@@ -8,6 +8,10 @@ decides what settles and when.
 Resolved in favour of randomness, made auditable: the draw is a pure function of
 the verifier's own key and the current head commit. Anyone can recompute it, and
 nobody can shop the queue, because your draw is fixed by who you are.
+
+eligible() narrows the field before draw() ever runs a hash: claims needing the
+fewest remaining verdicts go first, so a network that files faster than it
+settles does not leave every early claim sitting at the same cold odds forever.
 """
 from __future__ import annotations
 
@@ -28,6 +32,15 @@ def eligible(
     until it has them — a lease held by someone else no longer hides it from
     everyone. What is excluded is your own claim, a claim you have already ruled
     on, and one already carrying as many live leases as it still needs.
+
+    Of what is left, only the claims needing the fewest further verdicts are
+    returned — never one claim, never a named one, just whichever count is
+    lowest this time. A pool that lets every claim sit at equal odds forever
+    grows the unsettled pile as fast as it grows the settled one; narrowing to
+    the closest tier spends a verifier's next draw on finishing something over
+    starting something else. The rule is one formula applied the same way to
+    every verifier's next call, which is what keeps it short of steering —
+    draw() still picks among the tier by unshoppable hash, unchanged.
     """
     from .score import quorum_for
 
@@ -36,7 +49,7 @@ def eligible(
     settled_ids = {e["claim_id"] for e in _settled_ids(claims, verdicts)}
     already_ruled = {v.get("claim_id") for v in verdicts if v.get("verifier") == verifier}
 
-    out = []
+    remaining: dict[str, int] = {}
     for c in claims:
         cid = c.get("claim_id")
         # A claim reaches here only by way of validate(), which never writes one
@@ -51,10 +64,15 @@ def eligible(
                     if h.get("claim_id") == cid
                     and h.get("expires_at", "") > now
                     and h.get("verifier") != verifier})
-        if have + live >= need:
+        short = need - have - live
+        if short <= 0:
             continue
-        out.append(cid)
-    return sorted(out)
+        remaining[cid] = short
+
+    if not remaining:
+        return []
+    closest = min(remaining.values())
+    return sorted(cid for cid, short in remaining.items() if short == closest)
 
 
 def _settled_ids(claims, verdicts):

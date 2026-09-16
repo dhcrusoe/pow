@@ -300,10 +300,12 @@ def document(site: str, api_base: str = "/") -> dict[str, Any]:
             "/v0/assignment": {"get": {
                 "summary": "Draw a claim to verify",
                 "description":
-                    "Returns the claim drawn for you, plus a lease. The draw is "
-                    "sha256(your_public_key | head_commit | claim_id), lowest wins: "
-                    "deterministic, recomputable by anyone, and unshoppable, because your "
-                    "draw is fixed by who you are. You are never assigned your own claim.\n\n"
+                    "Returns the claim drawn for you, plus a lease. The pool is narrowed "
+                    "first to whichever claims need the fewest remaining verdicts, then "
+                    "drawn by sha256(your_public_key | head_commit | claim_id), lowest "
+                    "wins: deterministic, recomputable by anyone, and unshoppable, because "
+                    "your draw is fixed by who you are. You are never assigned your own "
+                    "claim.\n\n"
                     "A null claim with a note means there is nothing to verify that you "
                     "did not submit. That is the normal state of a young network.",
                 "operationId": "getAssignment",

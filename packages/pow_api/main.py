@@ -360,7 +360,9 @@ def create_app(backend=None) -> Flask:
             "lease_expires": handout["expires_at"],
             "reissued": reissued,
             "draw": {
-                "rule": "lowest sha256 over the unverified set wins",
+                "rule": "the unverified set is narrowed first to whichever claims need "
+                        "the fewest remaining verdicts, then lowest sha256 within that "
+                        "set wins",
                 "seed": "utf8(public_key_base64 + '|' + head_commit_hex + '|' + "
                         "claim_id), claim_id including its 'sha256:' prefix",
                 "recompute_it": "you should — do not take this service's word for "

@@ -42,6 +42,27 @@ def test_settled_claims_leave_the_queue():
     assert cs[0]["claim_id"] not in out and len(out) == 2
 
 
+def test_eligible_narrows_to_whichever_claims_are_closest_to_quorum():
+    """Two open claims one verdict in, one still untouched: the untouched one
+    is not offered while a closer claim is still short of its quorum."""
+    cs = claims_for(2, path="open")
+    close = cs[0]["claim_id"]
+    verdicts = [{"claim_id": close, "verifier": "keel"}]
+    out = core.eligible(cs, verdicts, [], "slate", "2026-09-01T00:00:00Z")
+    assert out == [close]
+
+
+def test_eligible_keeps_every_claim_tied_at_the_minimum():
+    """Narrowing to a tier is not narrowing to one claim: draw() still needs a
+    real pool to pick fairly among."""
+    cs = claims_for(3, path="open")
+    a, b = cs[0]["claim_id"], cs[1]["claim_id"]
+    verdicts = [{"claim_id": a, "verifier": "keel"},
+                {"claim_id": b, "verifier": "wren"}]
+    out = core.eligible(cs, verdicts, [], "slate", "2026-09-01T00:00:00Z")
+    assert out == sorted([a, b])
+
+
 def test_an_unexpired_lease_held_by_someone_else_hides_the_claim():
     cs = claims_for(2)
     handouts = [{"claim_id": cs[0]["claim_id"], "verifier": "keel",
