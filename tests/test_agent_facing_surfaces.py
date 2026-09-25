@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 
 import pow_core as core
 import pytest
@@ -73,6 +74,24 @@ def test_the_contract_is_served_inline_with_every_assignment(tmp_path, keys, cla
     assert not any(str(v).startswith("http") for v in contract.values())
 
 
+def test_the_contract_is_served_with_research_too(tmp_path):
+    """The assignment endpoint was the only place VERIFIER_CONTRACT actually
+    shipped — but reading a research record to decide what to work on is the
+    same "stranger's prose, read as data" situation, and an agent doing that
+    never hit the assignment endpoint at all."""
+    from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
+
+    backend = LocalBackend(tmp_path / "log")
+    app = create_app(backend)
+    app.config["TESTING"] = True
+    client = app.test_client()
+
+    body = client.get("/v0/research").get_json()
+    assert body["contract"] == core.VERIFIER_CONTRACT
+    assert not any(str(v).startswith("http") for v in body["contract"].values())
+
+
 def test_the_document_and_the_payload_cannot_drift_apart(site):
     """The rendered paragraph is generated, so this asserts the wiring, not the
     wording — if someone re-hardcodes the sentence, the rules stop matching."""
@@ -95,14 +114,50 @@ def test_every_endpoint_the_api_serves_is_reachable_from_the_documents(site):
     discoverable = txt + json.dumps(well_known)
 
     # /v0/health is infrastructure, not instruction: render.yaml points its
-    # healthCheckPath at it and no agent ever needs to call it. Everything else
-    # the API serves is something an agent is expected to use.
-    operational = {"/v0/health"}
+    # healthCheckPath at it and no agent ever needs to call it. /v0/classes
+    # already gives every manifest field a class needs; /v0/classes/shapes is
+    # additional worked examples, deliberately not named up front — that is
+    # the exact fix for agents converging on one narrow kind of claim after
+    # reading the examples before doing any research (see build.py's history
+    # here), so it stays reachable only by finding /v0/classes first.
+    operational = {"/v0/health", "/v0/classes/shapes"}
 
     for path in spec["paths"]:
         if "{" in path or path in operational:
             continue  # parameterised reads are reachable through their collection
         assert path in discoverable, f"{path} is served but named in no document"
+
+
+def test_every_route_the_app_actually_serves_is_in_the_openapi_document(tmp_path):
+    """The other direction of the test above, and nothing checked it before.
+
+    That one catches a documented endpoint missing from llms.txt/well-known.
+    Nothing caught a *live* endpoint missing from openapi.json itself — which
+    is exactly how /v0/requests shipped undocumented in an earlier round: the
+    Flask route existed, openapi.py was never touched, and every test passed
+    because nothing walked app.url_map and compared it against the spec.
+    """
+    from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
+    from pow_api.openapi import READS, document
+
+    app = create_app(LocalBackend(tmp_path / "log"))
+    spec = document("https://site.invalid", "https://api.invalid")
+    documented = set(spec["paths"]) | set(READS)
+
+    # Infrastructure, not instruction — same reasoning as `operational` above:
+    # a search crawler fetches robots.txt on convention, not because an agent
+    # read about it; openapi.json documents everything else and doesn't
+    # meaningfully document its own fetch; the root page and Flask's default
+    # static-file route are not API operations at all.
+    skip_paths = {"/", "/robots.txt", "/openapi.json", "/static/<path:filename>"}
+    for rule in app.url_map.iter_rules():
+        if rule.rule in skip_paths:
+            continue
+        # Flask's <name> params match openapi.py's {name} convention.
+        path = re.sub(r"<(?:[^:<>]+:)?([^<>]+)>", r"{\1}", rule.rule)
+        assert path in documented, \
+            f"{rule.rule} is a live route with no entry in openapi.py"
 
 
 def test_the_privacy_page_exists_and_says_the_thing_that_matters(site):

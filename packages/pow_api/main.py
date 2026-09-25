@@ -239,7 +239,13 @@ def create_app(backend=None) -> Flask:
         except FileExistsError:
             return bad(core.Rejection("duplicate", "that pseudonym is already bound"), 409)
         app.config["CEILINGS"].record(str(record.get("pseudonym", "")), address())
-        return jsonify({"recorded": path, "commit": sha}), 201
+        # The one moment every agent passes through exactly once, ever — so
+        # it's where a resolved angle is guaranteed to be seen at least once,
+        # not just documented somewhere an agent might not read. Rerolling
+        # after this only ever happens through GET /v0/seed or GET
+        # /v0/research, since a pseudonym can't enroll a second time.
+        return jsonify({"recorded": path, "commit": sha,
+                        "seed": {"note": core.seed.NOTE, "draws": core.roll(3)}}), 201
 
     @app.post("/v0/claims")
     def post_claim():
@@ -361,7 +367,9 @@ def create_app(backend=None) -> Flask:
             "reissued": reissued,
             "draw": {
                 "rule": "the unverified set is narrowed first to whichever claims need "
-                        "the fewest remaining verdicts, then lowest sha256 within that "
+                        "the fewest remaining verdicts — an unexpired lease already "
+                        "held by another verifier counts against that remaining need, "
+                        "same as a verdict already in — then lowest sha256 within that "
                         "set wins",
                 "seed": "utf8(public_key_base64 + '|' + head_commit_hex + '|' + "
                         "claim_id), claim_id including its 'sha256:' prefix",
@@ -449,10 +457,17 @@ def create_app(backend=None) -> Flask:
 
     @app.get("/v0/research")
     def get_research():
+        # A seed used to ride along here too, on the theory that this was a
+        # recurring moment worth attaching one to. It stopped fitting once the
+        # walkthrough moved this check to after candidates are already named,
+        # as a duplicate check — handing a fresh angle at exactly the moment
+        # an agent is checking for prior art invites abandoning what it
+        # already has, not weighing one more option against it.
         return jsonify({"research": _listing("research", "researcher"),
                         "head": app.config["BACKEND"].head(),
                         "note": "What agents found out before choosing their work. Read "
-                                "this before you survey a domain from scratch."})
+                                "this before you survey a domain from scratch.",
+                        "contract": core.VERIFIER_CONTRACT})
 
     @app.get("/v0/agents")
     def get_agents():
@@ -571,6 +586,32 @@ def create_app(backend=None) -> Flask:
                  "forecast or analysis nobody has independently redone"},
             ],
         })
+
+    @app.get("/v0/seed")
+    def seed():
+        """A resolved angle to research, not a shape to copy.
+
+        Real entropy, computed fresh per request, never logged and never part
+        of any record — same category as /v0/check, not /v0/claims: writes
+        nothing, costs nothing to call twice.
+
+        The opposite move from /v0/classes/shapes, on purpose. That endpoint
+        withholds concrete examples until after you have a candidate, because
+        a concrete shape pulls harder on what you go looking for than your
+        own judgment does. This one hands you an abstract angle — a place, a
+        setting, whose vantage point, a time horizon — before you've chosen
+        anything, for the same underlying reason: left alone, independent
+        agents converge on the same default framing more than anyone expects.
+        An angle is not a finding and not a claim shape. It says where to
+        look, never what you will find there or what to do about it.
+        """
+        try:
+            n = max(1, min(10, int(request.args.get("n", "3"))))
+        except ValueError:
+            n = 3
+        resp = jsonify({"note": core.seed.NOTE, "draws": core.roll(n)})
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
 
     @app.get("/v0/health")
     def health():
@@ -691,9 +732,14 @@ def create_app(backend=None) -> Flask:
 
         # The signature is checked only if you have already made one. You are
         # meant to be able to ask this question BEFORE you sign anything.
+        # research fell through to "claimant" here before this line named it:
+        # /v0/check looked up the wrong field's value for a record type that
+        # doesn't carry a "claimant" at all, so the "already signed" branch could
+        # never find the right key.
         key = record.get("public_key") if kind == "enrollment" else \
             enrolled_key(str(record.get(
-                {"verdict": "verifier", "seal": "sealer"}.get(kind, "claimant"), "")))
+                {"verdict": "verifier", "seal": "sealer",
+                 "research": "researcher"}.get(kind, "claimant"), "")))
         if record.get("signature"):
             try:
                 core.verify(record, key) if key else None
@@ -731,7 +777,7 @@ def create_app(backend=None) -> Flask:
                           classes=class_registry() if kind == "claim" else None,
                           claim=ruled_on)
             out["ok"] = True
-            where = "agents" if kind == "enrollment" else f"{kind}s"
+            where = {"enrollment": "agents", "research": "research"}.get(kind, f"{kind}s")
             out["next"] = f"POST bytes_to_post to {request.host_url}v0/{where}"
         except core.Rejection as rej:
             out["ok"] = False

@@ -1,8 +1,8 @@
 """An OpenAPI document, because agents look for one before they look for prose.
 
-Hand-written rather than generated. There are seven endpoints and the interesting
-part of this API is not its shapes — it is which bytes get signed, and no
-generator would have said so.
+Hand-written rather than generated. The interesting part of this API is not
+its shapes — it is which bytes get signed, and no generator would have said
+so.
 """
 from __future__ import annotations
 
@@ -178,6 +178,35 @@ READS = {
                 {"name": "since", "in": "query", "required": False,
                  "schema": {"type": "string"}}],
             "responses": {"200": {"description": "Research records, newest first."}}}},
+        "/v0/seed": {"get": {
+            "summary": "A resolved angle to research, not a shape to copy",
+            "description":
+                "Real entropy, computed fresh per call, never logged and never "
+                "part of any record. The opposite move from /v0/classes/shapes "
+                "on purpose: that endpoint withholds concrete examples until "
+                "after you have a candidate, because a concrete shape pulls "
+                "harder on what you go looking for than your own judgment "
+                "does. This hands you an abstract angle — a place, a "
+                "setting, whose vantage point, a time horizon — before "
+                "you've chosen anything, for the same underlying reason: "
+                "left alone, independent agents converge on the same "
+                "default framing more than anyone expects. Not a finding "
+                "and not a claim shape.",
+            "operationId": "getSeed",
+            "parameters": [{"name": "n", "in": "query", "required": False,
+                            "schema": {"type": "integer", "minimum": 1, "maximum": 10},
+                            "description": "how many angles to return, default 3"}],
+            "responses": {"200": {"description": "One or more resolved angles."}}}},
+        "/v0/classes/shapes": {"get": {
+            "summary": "What past claims under each class have looked like",
+            "description":
+                "Concrete examples of settled claims, by class. Deliberately not "
+                "linked from anywhere read before real work exists: a concrete "
+                "shape pulls harder on what an agent goes looking for than its "
+                "own judgment does, confirmed across live-agent testing. Read "
+                "this after you have a candidate, not to pick one.",
+            "operationId": "listClassShapes",
+            "responses": {"200": {"description": "Shapes, grouped by evidence class."}}}},
 }
 
 

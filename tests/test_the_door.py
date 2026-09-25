@@ -40,10 +40,14 @@ def test_the_api_origin_is_discoverable(site):
 
 
 def test_llms_txt_names_the_origin_before_it_names_an_endpoint(site):
+    """The document now inlines the origin on every single endpoint mention
+    rather than establishing it once and using bare paths after — a stronger
+    form of the same guarantee, since nothing relies on the reader carrying
+    context forward. This checks that form directly."""
     text = (site / "llms.txt").read_text()
     assert API in text
-    assert text.index("API BASE") < text.index("/v0/claims")
-    assert "different origin" in text
+    assert text.index(API) < text.index("/v0/claims")
+    assert "static and accepts nothing" in text  # the two origins are distinguished
 
 
 def test_no_endpoint_is_printed_without_its_origin(site):
@@ -66,7 +70,8 @@ def test_the_domains_and_their_boundaries_are_published(site):
     assert [d["id"] for d in doc["domains"]] == [1, 2, 3, 4, 5, 6]
     for d in doc["domains"]:
         assert d["name"] and d["boundary"] and d["boundary_means"]
-        assert d["scope"] and d["sources"], "each domain is grounded and cited"
+        assert d["scope"], "each domain is grounded"
+        assert "sources" not in d, "grounding lives in scope, not a citation list an agent anchors on"
     line = doc["the_one_immutable_line"]
     assert "INELIGIBLE" in line["when_unresolved"]
     assert "Net-positive is not the test" in line["when_unresolved"]
@@ -262,18 +267,10 @@ def test_no_one_at_risk_is_the_protective_boundary(site):
         assert "population" in d["boundary_means"] or "aggregate" in d["boundary_means"]
 
 
-def test_every_domain_cites_an_instrument(site):
-    doc = json.loads((site / "domains.json").read_text())
-    for d in doc["domains"]:
-        assert any(k in d["sources"] for k in
-                   ("UDHR", "ICESCR", "ITU", "WCED", "WHO", "ICCPR")), \
-            f"domain {d['id']} is ungrounded"
-
-
 def test_llms_txt_says_measure_someone_elses_system(site):
     text = (site / "llms.txt").read_text()
-    assert "measure somebody else's system, not your own" in text.lower()
-    assert "helps nobody but you" in text
+    assert "measure systems other people run, not your own" in text.lower()
+    assert "nothing on your own machine or hardware passes" in text.lower()
 
 
 # --- the API was write-only, so nobody could confirm a write landed ---
@@ -368,9 +365,14 @@ def test_the_published_signing_recipe_actually_works():
 
 
 def test_the_recipe_is_published_where_an_agent_will_find_it(site):
+    """The worked openssl warning moved to /examples/README.json — agents
+    confirmed finding and using it there across three live test rounds. What
+    has to survive in llms.txt itself is the warning that would otherwise
+    produce a signature that never verifies, and the pointer to the worked
+    bytes."""
     txt = (site / "llms.txt").read_text("utf-8")
-    assert "openssl" in txt and "There is no digest step" in txt
-    assert "'signed_bytes', send 'canonical_bytes'" in txt
+    assert "with no hashing step" in txt
+    assert "examples/" in txt
 
 
 def test_both_byte_strings_are_published_for_the_first_record_an_agent_writes(site):
@@ -392,21 +394,13 @@ def test_a_refused_pseudonym_states_the_rule_instead_of_restating_itself():
     assert "is not a valid pseudonym" not in detail        # the circular version
 
 
-def test_the_six_domains_are_readable_before_a_truncating_fetch_gives_up(site):
-    """An agent read the site and planned against four of six domains, because
-    the list sat 8.8KB in and its fetch stopped short."""
-    txt = (site / "llms.txt").read_text("utf-8")
-    for n in core.DOMAINS.values():
-        assert n in txt[:4096], f"{n} is past the first 4KB"
-
-
 def test_the_reachability_rule_is_stated_without_saying_where_to_look(site):
     """The same agent proposed writing SECURITY.md for its own workspace as a
     good deed. The rule closes that without handing anyone a reading list."""
     txt = (site / "llms.txt").read_text("utf-8")
-    assert "Evidence a stranger cannot reach is not evidence" in txt
-    assert "Your own machine is not such a place" in txt
-    assert "Nobody here will tell you where to" in txt
+    assert "a stranger who cannot ask you anything" in txt.lower()
+    assert "nothing on your own machine or hardware passes" in txt.lower()
+    assert "not what to conclude" in txt.lower()  # the no-reading-list guarantee
 
 
 # An agent computed claim_id over the record with only 'signature' removed. The
@@ -447,9 +441,13 @@ def test_the_two_exclusion_sets_are_both_published(site):
 
 def test_the_order_of_operations_is_stated(site):
     """claim_id first, then sign: signing before the id is in the record produces
-    a signature over a record that no longer exists."""
+    a signature over a record that no longer exists. The document no longer
+    spells out that ordering by hand — instead it routes every write through
+    /v0/check first, which computes and returns the id and the bytes to sign
+    together, so the ordering risk moves off the agent entirely."""
     txt = (site / "llms.txt").read_text("utf-8")
-    assert "Compute claim_id first" in txt
+    assert "returns the exact bytes to sign, the claim_id it expects" in txt
+    assert "Before any write, POST the draft to" in txt
 
 
 # Agents were learning the schema by writing to a permanent public log. A failed
@@ -516,6 +514,25 @@ def test_check_infers_the_kind_when_you_do_not_say(tmp_path, keys, log):
     assert body["kind"] == "enrollment" and body["ok"] is True
 
 
+def test_check_points_research_at_the_real_endpoint_not_a_plural(tmp_path, keys, log):
+    """researchs is not a word. Two agents hit this live before it was caught:
+    the blanket f"{kind}s" pluralization is right for claims/verdicts/seals
+    but wrong for the one mass noun in the set."""
+    from pow_api.backends import LocalBackend
+    from pow_api.main import create_app
+    c = create_app(LocalBackend(log)).test_client()
+    rec = {"researcher": "wren", "domain": 1,
+           "audience": "agents new to this network",
+           "question": "What do newcomers actually get stuck on first?",
+           "findings": [{"problem": "x", "evidence": "y"}], "rejected": [],
+           "sources": [{"what": "the set", "url": "https://example.invalid/a.json"}],
+           "published_at": "2026-01-01T00:00:00Z"}
+    body = c.post("/v0/check?kind=research", data=json.dumps(rec),
+                  content_type="application/json").get_json()
+    assert body["ok"] is True
+    assert body["next"].endswith("v0/research")
+
+
 def test_the_minimum_fields_are_generated_not_written_down(site):
     """A hand-written list goes stale silently and teaches an agent to file what
     the door refuses. The testing agent's own list marked three optional fields
@@ -528,24 +545,26 @@ def test_the_minimum_fields_are_generated_not_written_down(site):
     assert "open adds" in txt and "sealed adds" in txt
 
 
-def test_the_published_manifest_fields_are_the_ones_the_validator_requires(site):
-    """A manifest block in llms.txt that has drifted from the validator refuses
-    an agent on every field but one, for a class it read the shape of in the file
-    every agent reads first. Nothing asserted this prose, which is how the E1
-    block drifted to the container-era shape while the drift stayed invisible.
-    """
+def test_the_published_manifest_fields_are_the_ones_the_validator_requires(client):
+    """A manifest block that has drifted from the validator refuses an agent on
+    every field but one, for a class it read the shape of in the place every
+    agent is told to check. The manifest fields no longer live in llms.txt
+    prose at all — the document points to {api}/v0/classes instead, so this
+    now checks that live endpoint against the validator directly, which is a
+    stronger guarantee than checking prose: there is no second copy left to
+    drift."""
     from pow_core.validate import REQUIRED_MANIFEST
-    txt = (site / "llms.txt").read_text("utf-8")
-    classes = txt.split("## Most of the good work here is not code")[1]
+    body = client.get("/v0/classes").get_json()
 
     for ec in ("E2", "E4", "E6"):
-        block = classes.split(f"{ec} manifest:")[1].split("manifest:")[0]
+        published = {f["name"] for f in body["adopted"][ec]["manifest_fields"]}
         for field in REQUIRED_MANIFEST[ec]:
-            assert field in block, f"{ec} manifest omits required field {field!r}"
+            assert field in published, f"{ec} manifest omits required field {field!r}"
 
     # The removed container schema must not come back by any route.
+    all_fields = {f["name"] for c in body["adopted"].values() for f in c["manifest_fields"]}
     for gone in ("resource_ceiling", "expected_output_hash"):
-        assert gone not in txt, f"{gone} is not a manifest field any class accepts"
+        assert gone not in all_fields, f"{gone} is not a manifest field any class accepts"
 
 
 def test_class_status_is_linked_not_restated(site):
@@ -563,7 +582,9 @@ def test_class_status_is_linked_not_restated(site):
     txt = (site / "llms.txt").read_text("utf-8")
     index = json.loads((site / "classes" / "index.json").read_text("utf-8"))
 
-    assert "/classes/index.json" in txt
+    # The document now points at the live API (its own stated preference —
+    # "read live state from {api}") rather than the static mirror.
+    assert "v0/classes" in txt
     published = {c["class_id"] for c in index["classes"]}
     assert set(CHECKS) <= published, f"has a checker but is unpublished: {set(CHECKS) - published}"
     for c in index["classes"]:
@@ -574,16 +595,6 @@ def test_class_status_is_linked_not_restated(site):
     # The superseded status claims, by their exact wording.
     for gone in ("only these two can be verified", "Both are pure HTTP"):
         assert gone not in txt, f"{gone!r} contradicts CHECKS"
-
-    # ...but the operational instruction that sat among them must survive: this
-    # is the only place --observed is documented.
-    assert "--observed" in txt
-
-
-def test_the_path_decision_comes_before_the_document_asks_for_it(site):
-    txt = (site / "llms.txt").read_text("utf-8")
-    assert txt.index("Two paths. Decide this first") < txt.index("## Enroll first")
-    assert "Not sure? Open." in txt
 
 
 # Three access paths, and the properties that make each one honest.

@@ -162,8 +162,9 @@ def test_built_at_is_excluded_from_the_determinism_check(log, tmp_path):
 
 def test_both_proposition_shapes_are_declared_in_scope(site):
     text = (site / "llms.txt").read_text()
-    assert "Both shapes are in scope" in text
-    assert "Do not manufacture a before-and-after you did not cause" in text
+    assert "what was true before and after" in text
+    assert "let the correction be the contribution" in text
+    assert "did not cause" in text
 
 
 def test_the_verdict_name_matches_the_enum(site):

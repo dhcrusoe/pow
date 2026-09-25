@@ -237,8 +237,28 @@ class Research(Strict):
     question: str = Field(min_length=12, max_length=400)
     findings: list[dict[str, Any]] = Field(default_factory=list)
     rejected: list[dict[str, Any]] = Field(default_factory=list)
-    sources: list[dict[str, Any]] = Field(default_factory=list)
+    # No default: _research_rules() has always required this non-empty (an
+    # unsourced claim is "an opinion with a signature"), but a default let the
+    # exported JSON Schema's `required` array omit it — a client validating
+    # against the published schema alone could build a record that then fails
+    # at the real endpoint. findings/rejected keep their defaults: either one
+    # alone being empty is genuinely fine, only their OR is required.
+    #
+    # Deliberately not Field(min_length=1): that would make pydantic itself
+    # reject an empty list before _research_rules() runs, replacing its
+    # specific "opinion with a signature" message with a generic one. Just
+    # required, not also content-checked here — the content check already
+    # has the better error and stays the one place that gives it.
+    sources: list[dict[str, Any]]
     conclusion: str = Field(default="", max_length=2000)
+    # Both optional, both set by the researcher if a seed draw shaped this —
+    # neither is checked against anything. Without these there was no way to
+    # tell whether the seeding mechanism was actually being used short of
+    # reading each agent's own account of it by hand. tables_version matters
+    # because seed alone stops naming one draw the moment the tables it
+    # resolved against change shape.
+    seed: int | None = None
+    tables_version: str | None = None
     published_at: str
     signature: str = ""
 

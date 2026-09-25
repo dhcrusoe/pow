@@ -309,10 +309,18 @@ def test_counts_of_one_are_not_plural(log, tmp_path):
 # being handed API calls they cannot make.
 
 def test_both_doors_render_without_javascript(site):
+    """The tabs themselves stay CSS-only — no script switches a panel or is
+    needed to see either one. One script exists on the page (splicing a
+    fresh research angle into the human prompt) and it is additive only: it
+    does not gate the tabs, and every word an agent actually needs is in the
+    static HTML whether or not a script ever runs."""
     html = (site / "index.html").read_text("utf-8")
-    assert "<script" not in html, "the site has no javascript and should keep none"
     assert 'id="t-human" checked' in html          # the browser visitor is the default
     assert 'id="t-agent"' in html
+    assert "onclick" not in html and "addEventListener" not in html
+    if "<script" in html:
+        assert html.count("<script") == 1, "more script than the one known exception"
+        assert "v0/seed" in html, "the one allowed script is the seed splice, nothing else"
 
 
 def test_neither_panel_is_hidden_from_a_reader_that_ignores_css(site):
@@ -323,6 +331,16 @@ def test_neither_panel_is_hidden_from_a_reader_that_ignores_css(site):
     assert "/v0/agents" in html                    # the agent panel's content
     assert "make the world a better place for humans" in html   # the human panel's
 
+
+def test_the_seed_splice_has_a_hook_and_a_fallback_free_prompt(site):
+    """The placeholder exists for the script to fill, and the sentence around
+    it reads correctly whether or not that ever happens — "yours." and "Don't"
+    sit right next to each other in the raw HTML with nothing required
+    between them."""
+    html = (site / "index.html").read_text("utf-8")
+    assert 'id="seed-line"' in html
+    assert "yours.<span" in html
+    assert "/v0/seed" in html
 
 def test_the_prompt_points_at_the_one_durable_url_and_directs_nothing_else(site):
     """It must not tell an agent where to look. It points at llms.txt and stops."""
@@ -401,9 +419,12 @@ def test_dataset_date_comes_from_the_log_not_the_clock(log, tmp_path):
 
 def test_no_structured_data_without_an_absolute_base(site):
     """JSON-LD URLs cannot be relative. A block guarded from outside its own
-    {% block %} is not guarded at all — Jinja hoists the definition."""
+    {% block %} is not guarded at all — Jinja hoists the definition. Checked
+    by the specific script type JSON-LD actually uses, not by the presence
+    of any script at all — the seed-splice script is unrelated to this and
+    has nothing to do with an absolute base."""
     assert jsonld(site / "index.html") == []
-    assert "<script" not in (site / "index.html").read_text("utf-8")
+    assert 'type="application/ld+json"' not in (site / "index.html").read_text("utf-8")
 
 
 def test_the_about_page_identifies_its_subject(log, tmp_path):
@@ -507,17 +528,17 @@ def test_security_txt_points_at_the_page_it_explains(log, tmp_path):
 
 
 def test_llms_txt_renders_literal_braces_intact(log, tmp_path):
-    """LLMS is consumed by str.format, so every literal brace needs doubling.
-    Getting it wrong either raises KeyError at build time — loud, fine — or
-    silently halves a brace, which nothing would notice. These are the strings
-    an agent copies, so they have to survive."""
+    """LLMS is consumed by str.format, so any literal brace needs doubling to
+    survive; getting it wrong either raises KeyError at build time — loud,
+    fine — or silently halves a brace, which nothing would notice. The
+    document no longer hand-types any JSON needing this (manifest/record
+    shapes live at the live API and /examples/ now, not inline), so there is
+    nothing left requiring escaping — this guards against that silently
+    changing back without a check noticing."""
     out = tmp_path / "site"
     build(log, out)
     text = (out / "llms.txt").read_text("utf-8")
-    for literal in ('{"pseudonym": "<a-name-you-choose>",',
-                     '{url, snapshot_sha256',
-                     '{value, scale, unit, lo, hi}'):
-        assert literal in text, f"format escaping mangled {literal!r}"
+    assert "{{" not in text and "}}" not in text
 
 
 def test_security_page_renders_literal_braces_intact(log, tmp_path):

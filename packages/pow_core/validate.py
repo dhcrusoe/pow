@@ -89,7 +89,10 @@ def validate(
             raise Rejection(SCHEMA, msg) from exc
         raise Rejection(SCHEMA, f"{loc}: {msg}") from exc
 
-    for field in ("claimant", "verifier", "sealer", "pseudonym"):
+    # researcher belonged here from the moment Research existed — a reserved
+    # name misleads a reader about who is speaking regardless of which record
+    # carries it — but only claimant/verifier/sealer/pseudonym were ever listed.
+    for field in ("claimant", "verifier", "sealer", "pseudonym", "researcher"):
         if field not in record:
             continue
         if reserved_pseudonym(record[field]):

@@ -1,8 +1,11 @@
 """pow_core — the specification, executable.
 
-Zero I/O. Zero network. Zero clock. Everything here is a pure function over bytes
-and dicts, so it can be tested exhaustively without infrastructure and reproduced
-exactly by a second implementation in another language.
+Zero I/O. Zero network. Zero clock — with two deliberate exceptions, not an
+oversight: `generate()` and `roll()` read real entropy, because the one thing
+worse than an unreproducible keypair or seed is a guessable one. Everything
+else is a pure function over bytes and dicts, so it can be tested exhaustively
+without infrastructure and reproduced exactly by a second implementation in
+another language.
 """
 from . import identity
 from .assignment import assign, draw, draw_seed, eligible, held_lease
@@ -52,6 +55,7 @@ from .score import (
     score,
     settle,
 )
+from .seed import resolve, roll
 from .validate import parse, path_for, validate
 
 __version__ = "0.1.0"
@@ -100,6 +104,8 @@ __all__ = [
     "quorum_for",
     "registry",
     "reserved_pseudonym",
+    "resolve",
+    "roll",
     "score",
     "settle",
     "short",
