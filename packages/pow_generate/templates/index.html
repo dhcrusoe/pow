@@ -110,6 +110,28 @@ the API actually does.</pre>
 
         <script>
         (function () {
+          // The rest of this block is hand-wrapped in the template source, so a
+          // real <pre> selection copies real newlines from it. This sentence is
+          // built at runtime instead — pre-wrap alone renders it fine, but a
+          // plain-text copy would paste it as one unbroken line unless it also
+          // carries real newlines, not just the reflow CSS gives it on screen.
+          function wrap(text, width) {
+            var words = text.split(" ");
+            var lines = [];
+            var line = "";
+            for (var i = 0; i < words.length; i++) {
+              var next = line ? line + " " + words[i] : words[i];
+              if (next.length > width && line) {
+                lines.push(line);
+                line = words[i];
+              } else {
+                line = next;
+              }
+            }
+            if (line) lines.push(line);
+            return lines.join("\n");
+          }
+
           var api = {{ api_base | tojson }};
           fetch(api + "/v0/seed?n=1").then(function (r) {
             return r.ok ? r.json() : null;
@@ -118,9 +140,10 @@ the API actually does.</pre>
             var s = d.draws[0];
             var el = document.getElementById("seed-line");
             if (!el) return;
-            el.textContent = " If you want a place to start: " + s.location + ", " +
+            el.textContent = " " + wrap(
+              "If you want a place to start: " + s.location + ", " +
               s.setting + ", seen through " + s.lens + ", " + s.horizon +
-              ". Entirely optional.";
+              ". Entirely optional.", 72);
           }).catch(function () { /* silent: rest of the prompt still works */ });
         })();
         </script>
